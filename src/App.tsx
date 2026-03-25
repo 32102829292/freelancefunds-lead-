@@ -2607,103 +2607,573 @@ const Dashboard = ({ user, signOut }) => {
 
   /* ── Render tabs ── */
   const renderDashboard = () => {
+    // ── BIR deadlines ──
+    const now = new Date();
+    const yr = now.getFullYear();
+    const BIR_DEADLINES = [
+      {
+        label: "Q1 ITR (Jan–Mar)",
+        date: new Date(yr, 3, 15),
+        color: "#f97316",
+      },
+      {
+        label: "Q2 ITR (Apr–Jun)",
+        date: new Date(yr, 6, 15),
+        color: "#3b82f6",
+      },
+      {
+        label: "Q3 ITR (Jul–Sep)",
+        date: new Date(yr, 9, 15),
+        color: "#8b5cf6",
+      },
+      { label: "Annual ITR", date: new Date(yr + 1, 3, 15), color: "#10b981" },
+    ];
+    const nextDeadline = BIR_DEADLINES.find((d) => d.date > now);
+    const daysLeft = nextDeadline
+      ? Math.ceil((nextDeadline.date - now) / (1000 * 60 * 60 * 24))
+      : null;
+
+    // ── This week vs last week spend ──
+    const weekMs = 7 * 24 * 60 * 60 * 1000;
+    const thisWeek = expenses.reduce((s, e) => {
+      const d = new Date(e.date);
+      return now - d < weekMs ? s + e.amount : s;
+    }, 0);
+    const lastWeek = expenses.reduce((s, e) => {
+      const d = new Date(e.date);
+      const age = now - d;
+      return age >= weekMs && age < 2 * weekMs ? s + e.amount : s;
+    }, 0);
+    const weekDiff =
+      lastWeek > 0
+        ? Math.round(((thisWeek - lastWeek) / lastWeek) * 100)
+        : null;
+
+    // ── Budget alerts ──
+    const budgetAlerts = projects.filter(
+      (p) => p.budget > 0 && (projTotals[p.id] || 0) / p.budget >= 0.8
+    );
+
+    // ── Tax tips ──
+    const TAX_TIPS = [
+      {
+        tip: "Internet bills are deductible if used for work. Keep your monthly statement as proof.",
+        icon: "📡",
+      },
+      {
+        tip: "Software subscriptions (Canva, Figma, Adobe) are fully deductible business expenses.",
+        icon: "💻",
+      },
+      {
+        tip: "File your BIR Form 2307 from clients to claim creditable withholding tax.",
+        icon: "📋",
+      },
+      {
+        tip: "Home office costs may be partially deductible — track your utility bills monthly.",
+        icon: "🏠",
+      },
+      {
+        tip: "Professional development (courses, books) counts as a deductible business expense.",
+        icon: "📚",
+      },
+      {
+        tip: "Bank fees and PayPal/Wise transaction fees for client payments are deductible.",
+        icon: "💳",
+      },
+    ];
+    const tipIdx =
+      Math.floor(Date.now() / (1000 * 60 * 60 * 24)) % TAX_TIPS.length;
+    const todayTip = TAX_TIPS[tipIdx];
+
+    // ── Quick add shortcuts ──
+    const QUICK_ADD = [
+      {
+        label: "Grab / Commute",
+        category: "Transport",
+        Icon: Car,
+        color: "#3b82f6",
+      },
+      {
+        label: "Client Meal",
+        category: "Meals",
+        Icon: Utensils,
+        color: "#f97316",
+      },
+      {
+        label: "Software Sub",
+        category: "Software",
+        Icon: Monitor,
+        color: "#8b5cf6",
+      },
+      {
+        label: "Load / Data",
+        category: "Communication",
+        Icon: Smartphone,
+        color: "#10b981",
+      },
+    ];
+
+    // ── Setup checklist (always shown until all done) ──
+    const checklistDone = {
+      project: projects.length > 0,
+      expense: expenses.length > 0,
+      split: expenses.some((e) => e.splits.length > 1),
+      export: false,
+    };
+    const allDone =
+      checklistDone.project && checklistDone.expense && checklistDone.split;
+
+    // ── Empty state ──
     if (expenses.length === 0 && projects.length === 0)
       return (
-        <div style={{ textAlign: "center", padding: "60px 20px" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+            animation: "fadeUp .4s ease",
+          }}
+        >
+          {/* Welcome hero */}
           <div
             style={{
-              width: 80,
-              height: 80,
+              background: D
+                ? "linear-gradient(135deg,#111,#1a0e00)"
+                : "linear-gradient(135deg,#fff7ed,#fff)",
               borderRadius: 24,
-              background: "rgba(249,115,22,.12)",
-              border: "2px solid rgba(249,115,22,.25)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 20px",
+              padding: isMobile ? 20 : 28,
+              border: `1px solid ${
+                D ? "rgba(249,115,22,.2)" : "rgba(249,115,22,.2)"
+              }`,
             }}
           >
-            <FolderOpen size={36} color="#f97316" />
-          </div>
-          <h2 style={{ fontSize: 24, marginBottom: 12, color: txt }}>
-            Welcome, {user.name || user.email.split("@")[0]}!
-          </h2>
-          <p
-            style={{
-              color: muted,
-              marginBottom: 24,
-              maxWidth: 400,
-              margin: "0 auto 24px",
-            }}
-          >
-            Start by creating your first project and logging expenses to see
-            your tax savings.
-          </p>
-          <div
-            style={{
-              display: "flex",
-              gap: 12,
-              justifyContent: "center",
-              flexWrap: "wrap",
-            }}
-          >
-            <button
-              className="btn-primary"
-              onClick={() => {
-                setModal("project");
-                setPForm({
-                  name: "",
-                  client: "",
-                  color: "#f97316",
-                  budget: "",
-                });
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                marginBottom: 16,
+                flexWrap: "wrap",
               }}
             >
-              <FolderOpen size={14} /> Create Project
-            </button>
-            <button className="btn-ghost" onClick={() => setShowManual(true)}>
-              <BookOpen size={14} /> Read Guide
-            </button>
+              <div
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 14,
+                  background: "rgba(249,115,22,.15)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Gift size={24} color="#f97316" />
+              </div>
+              <div>
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: txt }}>
+                  Welcome, {user.name || user.email.split("@")[0]}! 👋
+                </h2>
+                <p style={{ fontSize: 13, color: muted }}>
+                  Let's set up your workspace in 3 quick steps.
+                </p>
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[
+                {
+                  done: false,
+                  label: "Create your first project",
+                  sub: "Represent a client or an ongoing engagement",
+                  action: () => {
+                    setModal("project");
+                    setPForm({
+                      name: "",
+                      client: "",
+                      color: "#f97316",
+                      budget: "",
+                    });
+                  },
+                  cta: "Create Project",
+                  Icon: FolderOpen,
+                  color: "#f97316",
+                },
+                {
+                  done: false,
+                  label: "Log your first expense",
+                  sub: "Record any business cost you've made",
+                  action: openAdd,
+                  cta: "Add Expense",
+                  Icon: Receipt,
+                  color: "#3b82f6",
+                },
+                {
+                  done: false,
+                  label: "Try Smart Split",
+                  sub: "Divide one cost across multiple clients",
+                  action: openAdd,
+                  cta: "Try it",
+                  Icon: Zap,
+                  color: "#8b5cf6",
+                },
+              ].map((step, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "12px 14px",
+                    background: D ? "#1a1a1a" : "#fafafa",
+                    borderRadius: 14,
+                    border: `1px solid ${brd}`,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: `${step.color}15`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <step.Icon size={16} color={step.color} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: txt }}>
+                      {step.label}
+                    </p>
+                    <p style={{ fontSize: 11, color: muted }}>{step.sub}</p>
+                  </div>
+                  <button
+                    onClick={step.action}
+                    className="btn-ghost"
+                    style={{ fontSize: 12, padding: "6px 12px", flexShrink: 0 }}
+                  >
+                    {step.cta} →
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      );
-    if (projects.length > 0 && expenses.length === 0)
-      return (
-        <div style={{ textAlign: "center", padding: "40px 20px" }}>
+
+          {/* BIR deadline + tax tip side by side */}
           <div
             style={{
-              width: 64,
-              height: 64,
-              borderRadius: 20,
-              background: "rgba(59,130,246,.15)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 16px",
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+              gap: 16,
             }}
           >
-            <Receipt size={28} color="#3b82f6" />
+            {nextDeadline && (
+              <div
+                style={{
+                  background: D ? "#111" : "#fff",
+                  borderRadius: 18,
+                  padding: 18,
+                  border: `1px solid ${brd}`,
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: "#f97316",
+                    textTransform: "uppercase",
+                    letterSpacing: ".06em",
+                    marginBottom: 10,
+                  }}
+                >
+                  ⏰ Next BIR Deadline
+                </p>
+                <p
+                  style={{
+                    fontSize: 22,
+                    fontWeight: 700,
+                    color: txt,
+                    marginBottom: 4,
+                  }}
+                >
+                  {daysLeft} days
+                </p>
+                <p style={{ fontSize: 13, color: muted, marginBottom: 10 }}>
+                  {nextDeadline.label}
+                </p>
+                <p style={{ fontSize: 11, color: D ? "#555" : "#aaa" }}>
+                  {nextDeadline.date.toLocaleDateString("en-PH", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </p>
+                <div
+                  style={{
+                    marginTop: 12,
+                    height: 4,
+                    background: D ? "#222" : "#f3f4f6",
+                    borderRadius: 2,
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      height: "100%",
+                      background: daysLeft < 30 ? "#ef4444" : "#f97316",
+                      width: `${Math.min(
+                        100,
+                        Math.max(5, 100 - (daysLeft / 90) * 100)
+                      )}%`,
+                      transition: "width .6s",
+                    }}
+                  />
+                </div>
+                <p style={{ fontSize: 10, color: muted, marginTop: 6 }}>
+                  {daysLeft < 30
+                    ? "Deadline approaching!"
+                    : "File BIR Form 1701Q"}
+                </p>
+              </div>
+            )}
+            <div
+              style={{
+                background: D ? "#111" : "#fff",
+                borderRadius: 18,
+                padding: 18,
+                border: `1px solid ${brd}`,
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: "#10b981",
+                  textTransform: "uppercase",
+                  letterSpacing: ".06em",
+                  marginBottom: 10,
+                }}
+              >
+                💡 Tax Tip of the Day
+              </p>
+              <p style={{ fontSize: 28, marginBottom: 8 }}>{todayTip.icon}</p>
+              <p style={{ fontSize: 13, color: txt, lineHeight: 1.7 }}>
+                {todayTip.tip}
+              </p>
+              <p style={{ fontSize: 10, color: muted, marginTop: 10 }}>
+                Consult a licensed CPA for your specific case.
+              </p>
+            </div>
           </div>
-          <h3 style={{ fontSize: 20, marginBottom: 8, color: txt }}>
-            Ready to track expenses!
-          </h3>
-          <p style={{ color: muted, marginBottom: 20 }}>
-            Your project is set up. Add your first expense to see the dashboard
-            come to life.
-          </p>
-          <button className="btn-primary" onClick={openAdd}>
-            <Plus size={14} /> Add Your First Expense
-          </button>
         </div>
       );
+
+    // ── Has projects, no expenses ──
+    if (projects.length > 0 && expenses.length === 0)
+      return (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+            animation: "fadeUp .4s ease",
+          }}
+        >
+          <div
+            style={{
+              background: D
+                ? "linear-gradient(135deg,#0d1520,#111)"
+                : "linear-gradient(135deg,#eff6ff,#fff)",
+              borderRadius: 24,
+              padding: isMobile ? 20 : 24,
+              border: `1px solid ${
+                D ? "rgba(59,130,246,.2)" : "rgba(59,130,246,.2)"
+              }`,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                marginBottom: 16,
+              }}
+            >
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  background: "rgba(59,130,246,.15)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Receipt size={20} color="#3b82f6" />
+              </div>
+              <div>
+                <p style={{ fontWeight: 700, fontSize: 16, color: txt }}>
+                  Project ready — add your first expense!
+                </p>
+                <p style={{ fontSize: 12, color: muted }}>
+                  Quick-tap a common expense below to get started fast.
+                </p>
+              </div>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2,1fr)",
+                gap: 8,
+              }}
+            >
+              {QUICK_ADD.map((q, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setForm((f) => ({
+                      ...f,
+                      description: q.label,
+                      category: q.category,
+                      splits: [{ pid: projects[0]?.id || "", pct: 100 }],
+                    }));
+                    setSplErr("");
+                    setEditId(null);
+                    setModal("expense");
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "12px 14px",
+                    background: D ? "#1a1a1a" : "#fafafa",
+                    border: `1px solid ${brd}`,
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    transition: "all .15s",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 8,
+                      background: `${q.color}15`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <q.Icon size={14} color={q.color} />
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: txt }}>
+                    {q.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+          {nextDeadline && (
+            <div
+              style={{
+                background: D ? "#111" : "#fff",
+                borderRadius: 18,
+                padding: 18,
+                border: `1px solid ${brd}`,
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                flexWrap: "wrap",
+              }}
+            >
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  background: "rgba(249,115,22,.12)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                ⏰
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontWeight: 700, fontSize: 14, color: txt }}>
+                  Next BIR deadline: {nextDeadline.label}
+                </p>
+                <p style={{ fontSize: 12, color: muted }}>
+                  {daysLeft} days away —{" "}
+                  {nextDeadline.date.toLocaleDateString("en-PH", {
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </p>
+              </div>
+              <div
+                style={{
+                  height: 6,
+                  width: 120,
+                  background: D ? "#222" : "#f3f4f6",
+                  borderRadius: 3,
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    height: "100%",
+                    background: daysLeft < 30 ? "#ef4444" : "#f97316",
+                    width: `${Math.min(
+                      100,
+                      Math.max(5, 100 - (daysLeft / 90) * 100)
+                    )}%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
+          <div
+            style={{
+              background: D ? "#111" : "#fff",
+              borderRadius: 18,
+              padding: 18,
+              border: `1px solid ${brd}`,
+            }}
+          >
+            <p
+              style={{
+                fontSize: 11,
+                fontWeight: 800,
+                color: "#10b981",
+                textTransform: "uppercase",
+                letterSpacing: ".06em",
+                marginBottom: 10,
+              }}
+            >
+              💡 Tax Tip of the Day
+            </p>
+            <p style={{ fontSize: 13, color: txt, lineHeight: 1.7 }}>
+              {todayTip.icon} {todayTip.tip}
+            </p>
+          </div>
+        </div>
+      );
+
+    // ── Full dashboard ──
     return (
       <div style={{ animation: "fadeUp .4s ease" }}>
+        {/* ── Top KPI cards ── */}
         <div
           style={{
             display: "grid",
             gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
             gap: 16,
-            marginBottom: 24,
+            marginBottom: 20,
           }}
         >
           <div
@@ -2738,10 +3208,29 @@ const Dashboard = ({ user, signOut }) => {
             >
               {fmt(grandTotal)}
             </p>
-            <p style={{ fontSize: 12, color: muted }}>
-              {expenses.length} expenses across {projects.length} project
-              {projects.length !== 1 ? "s" : ""}
-            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <p style={{ fontSize: 12, color: muted }}>
+                {expenses.length} expenses · {projects.length} project
+                {projects.length !== 1 ? "s" : ""}
+              </p>
+              {weekDiff !== null && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: weekDiff > 0 ? "#ef4444" : "#10b981",
+                    background:
+                      weekDiff > 0
+                        ? "rgba(239,68,68,.1)"
+                        : "rgba(16,185,129,.1)",
+                    borderRadius: 6,
+                    padding: "1px 7px",
+                  }}
+                >
+                  {weekDiff > 0 ? "▲" : "▼"} {Math.abs(weekDiff)}% this week
+                </span>
+              )}
+            </div>
           </div>
           <div
             style={{
@@ -2775,45 +3264,127 @@ const Dashboard = ({ user, signOut }) => {
             >
               {fmt(estSavings)}
             </p>
-            <p style={{ fontSize: 12, color: muted }}>at 20% deduction rate</p>
+            <p style={{ fontSize: 12, color: muted }}>
+              at 20% deduction rate · confirm with your CPA
+            </p>
           </div>
         </div>
+
+        {/* ── Stat pills ── */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(3,1fr)",
+            gridTemplateColumns: `repeat(${isMobile ? 2 : 4},1fr)`,
             gap: 12,
-            marginBottom: 24,
+            marginBottom: 20,
           }}
         >
-          <div className="card" style={{ padding: isMobile ? 12 : 16 }}>
-            <p className="lbl">Avg Expense</p>
-            <p style={{ fontSize: 18, fontWeight: 700, color: txt }}>
-              {expenses.length
+          {[
+            {
+              label: "Avg Expense",
+              value: expenses.length
                 ? fmt(Math.round(grandTotal / expenses.length))
-                : "—"}
-            </p>
-          </div>
-          <div className="card" style={{ padding: isMobile ? 12 : 16 }}>
-            <p className="lbl">Top Category</p>
-            <p style={{ fontSize: 18, fontWeight: 700, color: txt }}>
-              {Object.entries(catTotals).sort((a, b) => b[1] - a[1])[0]?.[0] ||
-                "—"}
-            </p>
-          </div>
-          <div className="card" style={{ padding: isMobile ? 12 : 16 }}>
-            <p className="lbl">Hours Saved</p>
-            <p style={{ fontSize: 18, fontWeight: 700, color: txt }}>
-              ~{Math.max(1, Math.ceil(expenses.length / 5))}h
-            </p>
-          </div>
+                : "—",
+            },
+            {
+              label: "This Week",
+              value: thisWeek > 0 ? fmt(Math.round(thisWeek)) : "₱0",
+            },
+            {
+              label: "Top Category",
+              value:
+                Object.entries(catTotals).sort((a, b) => b[1] - a[1])[0]?.[0] ||
+                "—",
+            },
+            {
+              label: "Hours Saved",
+              value: `~${Math.max(1, Math.ceil(expenses.length / 5))}h`,
+            },
+          ].map((s, i) => (
+            <div
+              key={i}
+              className="card"
+              style={{ padding: isMobile ? 12 : 16 }}
+            >
+              <p className="lbl">{s.label}</p>
+              <p
+                style={{
+                  fontSize: 16,
+                  fontWeight: 700,
+                  color: txt,
+                  marginTop: 2,
+                }}
+              >
+                {s.value}
+              </p>
+            </div>
+          ))}
         </div>
+
+        {/* ── Budget alerts ── */}
+        {budgetAlerts.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            {budgetAlerts.map((p) => {
+              const spent = projTotals[p.id] || 0,
+                pct = Math.round((spent / p.budget) * 100);
+              return (
+                <div
+                  key={p.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "12px 16px",
+                    marginBottom: 8,
+                    background: D ? "rgba(239,68,68,.07)" : "#fef2f2",
+                    border: "1px solid rgba(239,68,68,.25)",
+                    borderRadius: 14,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <AlertTriangle
+                    size={15}
+                    color="#ef4444"
+                    style={{ flexShrink: 0 }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: txt }}>
+                      {p.name} budget {pct >= 100 ? "exceeded" : "almost full"}{" "}
+                      ({pct}%)
+                    </p>
+                    <p style={{ fontSize: 11, color: muted }}>
+                      {fmt(Math.round(spent))} of {fmt(Math.round(p.budget))}{" "}
+                      used
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setTab("projects")}
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "#ef4444",
+                      background: "none",
+                      border: "1px solid rgba(239,68,68,.3)",
+                      borderRadius: 8,
+                      padding: "5px 12px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Review →
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── Charts row ── */}
         <div
           style={{
             display: "grid",
             gridTemplateColumns: isMobile ? "1fr" : "5fr 3fr",
             gap: 16,
-            marginBottom: 24,
+            marginBottom: 20,
           }}
         >
           <div className="card" style={{ padding: isMobile ? 16 : 20 }}>
@@ -2883,18 +3454,18 @@ const Dashboard = ({ user, signOut }) => {
                 size={14}
                 style={{ display: "inline", marginRight: 8, color: "#f97316" }}
               />{" "}
-              Projects
+              By Project
             </p>
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 16,
+                gap: 12,
                 flexWrap: "wrap",
               }}
             >
               <DonutChart
-                size={80}
+                size={76}
                 segments={projects.map((p) => ({
                   pct: grandTotal
                     ? Math.round(((projTotals[p.id] || 0) / grandTotal) * 100)
@@ -2902,41 +3473,48 @@ const Dashboard = ({ user, signOut }) => {
                   color: p.color,
                 }))}
               />
-              <div style={{ flex: 1 }}>
-                {projects.slice(0, 3).map((p) => (
+              <div style={{ flex: 1, minWidth: 80 }}>
+                {projects.slice(0, 4).map((p) => (
                   <div
                     key={p.id}
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
-                      marginBottom: 8,
+                      marginBottom: 6,
+                      gap: 4,
                     }}
                   >
                     <div
-                      style={{ display: "flex", alignItems: "center", gap: 6 }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        flex: 1,
+                        minWidth: 0,
+                      }}
                     >
                       <div
                         style={{
-                          width: 8,
-                          height: 8,
+                          width: 7,
+                          height: 7,
                           borderRadius: 2,
                           background: p.color,
+                          flexShrink: 0,
                         }}
                       />
                       <span
                         style={{
-                          fontSize: 12,
+                          fontSize: 11,
                           color: txt,
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
-                          maxWidth: 80,
                         }}
                       >
                         {p.name}
                       </span>
                     </div>
-                    <span style={{ fontSize: 12, color: muted }}>
+                    <span style={{ fontSize: 11, color: muted, flexShrink: 0 }}>
                       {fmt(Math.round(projTotals[p.id] || 0))}
                     </span>
                   </div>
@@ -2945,6 +3523,313 @@ const Dashboard = ({ user, signOut }) => {
             </div>
           </div>
         </div>
+
+        {/* ── BIR deadline + Tax tip + Quick add ── */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: isMobile
+              ? "1fr"
+              : nextDeadline
+              ? "1fr 1fr 1fr"
+              : "1fr 1fr",
+            gap: 16,
+            marginBottom: 20,
+          }}
+        >
+          {/* BIR Deadline */}
+          {nextDeadline && (
+            <div
+              style={{
+                background: D ? "#111" : "#fff",
+                borderRadius: 18,
+                padding: 18,
+                border: `1px solid ${brd}`,
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 10,
+                  fontWeight: 800,
+                  color: "#f97316",
+                  textTransform: "uppercase",
+                  letterSpacing: ".07em",
+                  marginBottom: 8,
+                }}
+              >
+                ⏰ Next BIR Deadline
+              </p>
+              <p
+                style={{
+                  fontSize: 26,
+                  fontWeight: 700,
+                  color: daysLeft < 30 ? "#ef4444" : txt,
+                  marginBottom: 2,
+                }}
+              >
+                {daysLeft}d
+              </p>
+              <p style={{ fontSize: 12, color: muted, marginBottom: 10 }}>
+                {nextDeadline.label}
+              </p>
+              <div
+                style={{
+                  height: 4,
+                  background: D ? "#222" : "#f3f4f6",
+                  borderRadius: 2,
+                  overflow: "hidden",
+                  marginBottom: 6,
+                }}
+              >
+                <div
+                  style={{
+                    height: "100%",
+                    background: daysLeft < 30 ? "#ef4444" : "#f97316",
+                    width: `${Math.min(
+                      100,
+                      Math.max(5, 100 - (daysLeft / 90) * 100)
+                    )}%`,
+                    transition: "width .6s",
+                  }}
+                />
+              </div>
+              <p style={{ fontSize: 10, color: muted }}>
+                {nextDeadline.date.toLocaleDateString("en-PH", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </p>
+            </div>
+          )}
+          {/* Tax tip */}
+          <div
+            style={{
+              background: D ? "#111" : "#fff",
+              borderRadius: 18,
+              padding: 18,
+              border: `1px solid ${brd}`,
+            }}
+          >
+            <p
+              style={{
+                fontSize: 10,
+                fontWeight: 800,
+                color: "#10b981",
+                textTransform: "uppercase",
+                letterSpacing: ".07em",
+                marginBottom: 8,
+              }}
+            >
+              💡 Tax Tip
+            </p>
+            <p style={{ fontSize: 22, marginBottom: 8 }}>{todayTip.icon}</p>
+            <p style={{ fontSize: 12, color: txt, lineHeight: 1.65 }}>
+              {todayTip.tip}
+            </p>
+          </div>
+          {/* Quick add */}
+          <div
+            style={{
+              background: D ? "#111" : "#fff",
+              borderRadius: 18,
+              padding: 18,
+              border: `1px solid ${brd}`,
+            }}
+          >
+            <p
+              style={{
+                fontSize: 10,
+                fontWeight: 800,
+                color: "#8b5cf6",
+                textTransform: "uppercase",
+                letterSpacing: ".07em",
+                marginBottom: 10,
+              }}
+            >
+              ⚡ Quick Add
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {QUICK_ADD.map((q, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    if (expenses.length >= maxExp) {
+                      showToast(`Free plan: max ${maxExp} expenses`, "warning");
+                      return;
+                    }
+                    setEditId(null);
+                    setForm((f) => ({
+                      ...f,
+                      description: q.label,
+                      category: q.category,
+                      amount: "",
+                      splits: [{ pid: projects[0]?.id || "", pct: 100 }],
+                    }));
+                    setSplErr("");
+                    setModal("expense");
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "7px 10px",
+                    background: D ? "#1a1a1a" : "#fafafa",
+                    border: `1px solid ${brd}`,
+                    borderRadius: 10,
+                    cursor: "pointer",
+                    transition: "all .15s",
+                    fontFamily: "inherit",
+                    textAlign: "left",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: 7,
+                      background: `${q.color}15`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <q.Icon size={12} color={q.color} />
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: txt }}>
+                    {q.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Setup progress (shown until all steps done) ── */}
+        {!allDone && (
+          <div
+            style={{
+              background: D ? "#111" : "#fff",
+              borderRadius: 18,
+              padding: 18,
+              border: `1px solid ${brd}`,
+              marginBottom: 20,
+            }}
+          >
+            <p
+              style={{
+                fontSize: 11,
+                fontWeight: 800,
+                color: "#8b5cf6",
+                textTransform: "uppercase",
+                letterSpacing: ".07em",
+                marginBottom: 12,
+              }}
+            >
+              🚀 Getting Started
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {[
+                {
+                  done: checklistDone.project,
+                  label: "Create a project",
+                  action: () => {
+                    setModal("project");
+                    setPForm({
+                      name: "",
+                      client: "",
+                      color: "#f97316",
+                      budget: "",
+                    });
+                  },
+                },
+                {
+                  done: checklistDone.expense,
+                  label: "Log your first expense",
+                  action: openAdd,
+                },
+                {
+                  done: checklistDone.split,
+                  label: "Try splitting an expense across 2 projects",
+                  action: openAdd,
+                },
+              ].map((step, i) => (
+                <div
+                  key={i}
+                  style={{ display: "flex", alignItems: "center", gap: 10 }}
+                >
+                  <div
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: "50%",
+                      background: step.done
+                        ? "rgba(16,185,129,.15)"
+                        : "transparent",
+                      border: `2px solid ${step.done ? "#10b981" : brd}`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {step.done && <Check size={11} color="#10b981" />}
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 13,
+                      color: step.done ? muted : txt,
+                      textDecoration: step.done ? "line-through" : "none",
+                      flex: 1,
+                    }}
+                  >
+                    {step.label}
+                  </span>
+                  {!step.done && (
+                    <button
+                      onClick={step.action}
+                      style={{
+                        fontSize: 11,
+                        color: "#8b5cf6",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontWeight: 700,
+                      }}
+                    >
+                      Do it →
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div
+              style={{
+                marginTop: 12,
+                height: 4,
+                background: D ? "#222" : "#f3f4f6",
+                borderRadius: 2,
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  height: "100%",
+                  background: "#8b5cf6",
+                  width: `${Math.round(
+                    (Object.values(checklistDone).filter(Boolean).length /
+                      Object.values(checklistDone).length) *
+                      100
+                  )}%`,
+                  transition: "width .6s",
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ── Recent Activity ── */}
         <div className="card" style={{ padding: isMobile ? 16 : 20 }}>
           <div
             style={{
@@ -4663,7 +5548,7 @@ const Dashboard = ({ user, signOut }) => {
    ROOT — App Router
 ════════════════════════════════════════════ */
 export default function App() {
-  const [screen, setScreen] = useState("landing"); // landing | auth | app
+  const [screen, setScreen] = useState("landing");
   const [user, setUser] = useState(null);
 
   const handleAuth = (userData) => {
@@ -4675,11 +5560,16 @@ export default function App() {
     setScreen("landing");
   };
 
-  if (screen === "app" && user)
-    return <Dashboard user={user} signOut={handleSignOut} />;
-  if (screen === "auth")
-    return (
-      <AuthScreen onAuth={handleAuth} onBack={() => setScreen("landing")} />
-    );
-  return <LandingPage onLogin={() => setScreen("auth")} />;
+  return (
+    <>
+      <style>{`*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}html,body{width:100%;overflow-x:hidden}body{-webkit-font-smoothing:antialiased}`}</style>
+      {screen === "app" && user ? (
+        <Dashboard user={user} signOut={handleSignOut} />
+      ) : screen === "auth" ? (
+        <AuthScreen onAuth={handleAuth} onBack={() => setScreen("landing")} />
+      ) : (
+        <LandingPage onLogin={() => setScreen("auth")} />
+      )}
+    </>
+  );
 }
