@@ -274,15 +274,13 @@ function useData(userId) {
       .select()
       .single();
     if (ee) throw ee;
-    await supabase
-      .from("expense_splits")
-      .insert(
-        f.splits.map((s) => ({
-          expense_id: exp.id,
-          project_id: s.pid,
-          pct: s.pct,
-        }))
-      );
+    await supabase.from("expense_splits").insert(
+      f.splits.map((s) => ({
+        expense_id: exp.id,
+        project_id: s.pid,
+        pct: s.pct,
+      }))
+    );
     setExpenses((p) => [{ ...exp, splits: f.splits }, ...p]);
   };
   const updateExpense = async (id, f) => {
@@ -437,366 +435,645 @@ function Toast({ msg, type }) {
     </div>
   );
 }
+// ── Replace your existing LandingPage function in App.tsx with this ──
 
-// ── LANDING PAGE ────────────────────────────────────────────────────────────
 function LandingPage({ onLogin, onRegister }) {
   const { isMobile, isTablet } = useBreakpoint();
   const [scrolled, setScrolled] = useState(false);
-  const [navOpen, setNavOpen] = useState(false);
+  const [faqOpen, setFaqOpen] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalPlan, setModalPlan] = useState("promo");
+  const [selectedPlan, setSelectedPlan] = useState("promo");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [emailErr, setEmailErr] = useState(false);
+  const [timeLeft, setTimeLeft] = useState({ days: 7, hrs: 0, min: 0, sec: 0 });
 
   useEffect(() => {
-    const f = () => setScrolled(window.scrollY > 50);
+    const f = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", f, { passive: true });
     return () => window.removeEventListener("scroll", f);
   }, []);
 
+  useEffect(() => {
+    const end = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    const tick = () => {
+      const diff = Math.max(0, end - Date.now());
+      setTimeLeft({
+        days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+        hrs: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        min: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+        sec: Math.floor((diff % (1000 * 60)) / 1000),
+      });
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const pad = (n) => String(n).padStart(2, "0");
+
+  const openModal = (plan) => {
+    setModalPlan(plan);
+    setSelectedPlan(plan);
+    setSubmitted(false);
+    setSubmitting(false);
+    setEmailErr(false);
+    setModalOpen(true);
+  };
+
+  const handleSubmit = () => {
+    if (!email.trim() || !email.includes("@")) {
+      setEmailErr(true);
+      setTimeout(() => setEmailErr(false), 2000);
+      return;
+    }
+    setSubmitting(true);
+    setTimeout(() => {
+      setSubmitting(false);
+      setSubmitted(true);
+    }, 1400);
+  };
+
   const css = `
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html,body{overflow-x:hidden;scroll-behavior:smooth;-webkit-font-smoothing:antialiased;max-width:100vw}
-    @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
-    @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-    .bob{animation:bob 6s ease-in-out infinite}
-    .mq{display:flex;white-space:nowrap;animation:marquee 28s linear infinite}
-    .fade-u{animation:fadeUp .6s ease both}
-    .fade-u-1{animation:fadeUp .6s .1s ease both}
-    .fade-u-2{animation:fadeUp .6s .2s ease both}
-    .fade-u-3{animation:fadeUp .6s .3s ease both}
-    .feature-card{background:#111;border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:26px;transition:border-color .2s,background .2s}
-    .feature-card:hover{background:#161616;border-color:rgba(249,115,22,.25)}
+    html{scroll-behavior:smooth}
+    body{overflow-x:hidden}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+    @keyframes pulse-ring{0%{transform:scale(1);opacity:.8}100%{transform:scale(1.6);opacity:0}}
+    @keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.03)}100%{transform:scale(1)}}
+    .lp-float{animation:float 5s ease-in-out infinite}
+    .lp-fade{animation:fadeUp .6s cubic-bezier(.16,1,.3,1) both}
+    .lp-fade-1{animation:fadeUp .6s .1s cubic-bezier(.16,1,.3,1) both}
+    .lp-fade-2{animation:fadeUp .6s .2s cubic-bezier(.16,1,.3,1) both}
+    .lp-fade-3{animation:fadeUp .6s .3s cubic-bezier(.16,1,.3,1) both}
+    .lp-fade-4{animation:fadeUp .6s .4s cubic-bezier(.16,1,.3,1) both}
+    .pulse-dot{width:7px;height:7px;border-radius:50%;background:#f97316;position:relative;display:inline-block}
+    .pulse-dot::after{content:'';position:absolute;inset:0;border-radius:50%;background:#f97316;animation:pulse-ring 1.5s cubic-bezier(.4,0,.6,1) infinite}
+    .ticker-inner{display:inline-flex;white-space:nowrap;animation:ticker 32s linear infinite}
+    .lp-testi:hover{border-color:rgba(249,115,22,.3)!important;transform:translateY(-3px);box-shadow:0 12px 36px rgba(0,0,0,.06)}
+    .lp-pain:hover{border-color:rgba(249,115,22,.3)!important;background:rgba(249,115,22,.04)!important}
+    .lp-price:hover{transform:translateY(-4px);box-shadow:0 20px 48px rgba(0,0,0,.08)}
+    .lp-faq-a{max-height:0;overflow:hidden;transition:max-height .35s ease,margin-top .2s}
+    .lp-faq-a.open{max-height:200px;margin-top:12px}
+    .lp-plan-opt{border:2px solid #eee;border-radius:14px;padding:14px 16px;cursor:pointer;transition:all .15s;text-align:center}
+    .lp-plan-opt.sel{border-color:#f97316;background:rgba(249,115,22,.05)}
+    .form-input{width:100%;background:#fafafa;border:1.5px solid #eee;border-radius:12px;padding:13px 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#0f0e0d;outline:none;transition:border .15s;margin-bottom:16px}
+    .form-input:focus{border-color:#f97316;box-shadow:0 0 0 3px rgba(249,115,22,.1)}
+    .form-input.err{border-color:#ef4444}
     a{text-decoration:none}
+    @media(max-width:640px){
+      .lp-pricing-grid{grid-template-columns:1fr!important}
+      .lp-pain-grid{grid-template-columns:1fr!important}
+      .lp-ba{grid-template-columns:1fr!important}
+      .lp-testi-grid{grid-template-columns:1fr!important}
+      .lp-proof-bar{flex-direction:column!important}
+    }
   `;
 
-  const features = [
+  const faqs = [
     {
-      Icon: Zap,
+      q: "Is my data private?",
+      a: "Yes — 100%. Each account sees only its own data. Your projects, expenses, and reports are protected with row-level security (Supabase RLS). No one else — including us — can see your financials.",
+    },
+    {
+      q: "Is this actually BIR-compliant?",
+      a: "FreelanceFunds generates a clear, itemized breakdown by project and category that your accountant can use. It doesn't replace an accountant, but it gives them exactly what they need — quickly. Always confirm with a licensed CPA for your specific BIR filings.",
+    },
+    {
+      q: "Can I cancel anytime?",
+      a: "Absolutely. Cancel your Pro subscription at any time with one click. You keep Pro features until the end of your billing period. No penalty, no forms.",
+    },
+    {
+      q: 'What is the "Founding Member" price?',
+      a: "The first 50 subscribers get ₱500/month locked in forever — even as the product grows and the price may increase. This is our way of rewarding early supporters who helped validate the product.",
+    },
+    {
+      q: "What happens to my data if I downgrade to Free?",
+      a: "Your data stays safe. You'll just be limited to 50 expenses and 3 projects going forward. All existing data remains visible — you just can't add beyond the free limits without upgrading again.",
+    },
+    {
+      q: "Does it work on mobile?",
+      a: "Yes — and we're actively improving it. The app works on mobile browsers today. A dedicated mobile experience with better navigation is our highest priority fix in the next sprint.",
+    },
+    {
+      q: "When is receipt scanning coming?",
+      a: "Receipt scanning is our #1 most-requested feature and is in development now. Pro subscribers get early access when it launches.",
+    },
+  ];
+
+  const testimonials = [
+    {
+      stars: 5,
+      text: '"The dashboard is clean and easy to understand. It shows total tracked expenses and gives useful insights like total spending and estimated tax savings. Really helpful for freelancers who want to track finances efficiently."',
+      name: "Tester 1",
+      role: "Freelance Marketing · Willing to pay ₱500–₱650/mo",
       color: "#f97316",
-      title: "Smart Split",
-      body: "Divide any expense across multiple clients by percentage. Adobe CC at 60/40? Done in seconds.",
+      initial: "M",
     },
     {
-      Icon: FileText,
-      color: "#10b981",
-      title: "BIR-Ready Reports",
-      body: "Generate a full breakdown by project and category. Export CSV or PDF and hand it to your accountant.",
-    },
-    {
-      Icon: Shield,
-      color: "#3b82f6",
-      title: "Private Per Account",
-      body: "Your data is yours only. Each account sees its own projects, expenses, and reports — nothing shared.",
-    },
-    {
-      Icon: BarChart3,
+      stars: 5,
+      text: '"The app streamlines daily expense tracking effectively. Clean and intuitive with strong UX execution. It supports saving and reduces unnecessary spending — a clear benefit."',
+      name: "Tester 5",
+      role: "Software Engineer · Summa Cum Laude",
       color: "#8b5cf6",
-      title: "Live Dashboard",
-      body: "Total tracked, estimated tax savings, monthly spend chart — all updating in real time.",
+      initial: "S",
     },
     {
-      Icon: StickyNote,
-      color: "#ec4899",
-      title: "Notes on Splits",
-      body: "Add context to every expense. Document why a split was set a certain way for audit confidence.",
+      stars: 5,
+      text: '"The concept is genuinely useful for Filipino freelancers. Sleek design, dark theme with orange accents feels modern. I\'d use it daily — especially for saving more and cutting back on impulse spending."',
+      name: "Tester 8",
+      role: "Freelance Designer · Marketing",
+      color: "#10b981",
+      initial: "K",
     },
-    {
-      Icon: Share2,
-      color: "#06b6d4",
-      title: "Share Your Stats",
-      body: "Copy a shareable summary of your quarterly savings and send it to your network.",
-    },
+  ];
+
+  const tickerItems = [
+    ["Adobe CC split 60/40", "✓ auto-allocated"],
+    ["BIR quarterly report", "✓ one click"],
+    ["Phone bill across 3 clients", "✓ by hours"],
+    ["Grab rides per project", "✓ split instantly"],
+    ["₱18,000 avg annual savings", "✓ documented"],
+    ["10 hours saved monthly", "✓ no spreadsheets"],
+    ["8 of 9 testers use it daily", "✓ validated"],
   ];
 
   return (
     <div
       style={{
-        background: "#0a0a0a",
-        color: "#fff",
-        minHeight: "100vh",
-        fontFamily: "'Plus Jakarta Sans',sans-serif",
+        fontFamily: "'DM Sans', sans-serif",
+        background: "#faf8f4",
+        color: "#0f0e0d",
         overflowX: "hidden",
-        width: "100%",
-        maxWidth: "100vw",
+        WebkitFontSmoothing: "antialiased",
       }}
     >
       <style>{css}</style>
 
+      {/* ── MODAL ── */}
+      {modalOpen && (
+        <div
+          onClick={(e) => e.target === e.currentTarget && setModalOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 999,
+            padding: 20,
+            backdropFilter: "blur(14px)",
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 28,
+              padding: isMobile ? "28px 22px" : 40,
+              width: "100%",
+              maxWidth: 500,
+              boxShadow: "0 40px 80px rgba(0,0,0,.3)",
+              position: "relative",
+            }}
+          >
+            <button
+              onClick={() => setModalOpen(false)}
+              style={{
+                position: "absolute",
+                top: 18,
+                right: 18,
+                background: "#f5f5f5",
+                border: "none",
+                borderRadius: "50%",
+                width: 32,
+                height: 32,
+                cursor: "pointer",
+                fontSize: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#666",
+              }}
+            >
+              ✕
+            </button>
+
+            {submitted ? (
+              <div style={{ textAlign: "center", padding: "10px 0" }}>
+                <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
+                <h3
+                  style={{
+                    fontFamily: "'Playfair Display', serif",
+                    fontSize: 26,
+                    color: "#16a34a",
+                    marginBottom: 8,
+                  }}
+                >
+                  You're in the founding 50!
+                </h3>
+                <p style={{ color: "#6b6460", fontSize: 14, lineHeight: 1.7 }}>
+                  Check your email for next steps. Your founding price is locked
+                  in — even as FreelanceFunds grows.
+                  <br />
+                  <br />
+                  <strong>Welcome to the team, founder.</strong>
+                </p>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    marginTop: 24,
+                    justifyContent: "center",
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      setModalOpen(false);
+                      onRegister();
+                    }}
+                    style={{
+                      background: "#f97316",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 12,
+                      padding: "12px 24px",
+                      fontSize: 14,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    Create Account Now →
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h3
+                  style={{
+                    fontFamily: "'Playfair Display', serif",
+                    fontSize: 26,
+                    marginBottom: 6,
+                    color: "#0f0e0d",
+                  }}
+                >
+                  {selectedPlan === "free"
+                    ? "Create Free Account"
+                    : selectedPlan === "promo"
+                    ? "🔥 Claim Your ₱150 Promo"
+                    : "Get Pro — ₱500/month"}
+                </h3>
+                <p
+                  style={{
+                    fontSize: 14,
+                    color: "#6b6460",
+                    marginBottom: 24,
+                    lineHeight: 1.65,
+                  }}
+                >
+                  {selectedPlan === "free" ? (
+                    "Start free — no card needed. Upgrade to Pro anytime when you're ready."
+                  ) : selectedPlan === "promo" ? (
+                    <span>
+                      Get <strong>full Pro access for just ₱150</strong> for 7
+                      days, then ₱500/month. Cancel anytime. Offer ends soon.
+                    </span>
+                  ) : (
+                    "Unlock unlimited expenses, projects, 4-way splitting, and PDF reports. Cancel anytime."
+                  )}
+                </p>
+
+                {selectedPlan !== "free" && (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 10,
+                      marginBottom: 20,
+                    }}
+                  >
+                    <div
+                      className={`lp-plan-opt ${
+                        selectedPlan === "promo" ? "sel" : ""
+                      }`}
+                      onClick={() => setSelectedPlan("promo")}
+                    >
+                      <div
+                        style={{
+                          fontWeight: 800,
+                          fontSize: 15,
+                          color:
+                            selectedPlan === "promo" ? "#f97316" : "#0f0e0d",
+                          marginBottom: 3,
+                        }}
+                      >
+                        🔥 7-Day Promo
+                      </div>
+                      <div style={{ fontSize: 13, color: "#6b6460" }}>
+                        ₱150 → then ₱500/mo
+                      </div>
+                    </div>
+                    <div
+                      className={`lp-plan-opt ${
+                        selectedPlan === "pro" ? "sel" : ""
+                      }`}
+                      onClick={() => setSelectedPlan("pro")}
+                    >
+                      <div
+                        style={{
+                          fontWeight: 800,
+                          fontSize: 15,
+                          color: selectedPlan === "pro" ? "#f97316" : "#0f0e0d",
+                          marginBottom: 3,
+                        }}
+                      >
+                        Pro Monthly
+                      </div>
+                      <div style={{ fontSize: 13, color: "#6b6460" }}>
+                        ₱500/month
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "#999",
+                      textTransform: "uppercase",
+                      letterSpacing: ".07em",
+                      marginBottom: 7,
+                    }}
+                  >
+                    Your Name
+                  </label>
+                  <input
+                    className="form-input"
+                    type="text"
+                    placeholder="e.g. Juan dela Cruz"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "#999",
+                      textTransform: "uppercase",
+                      letterSpacing: ".07em",
+                      marginBottom: 7,
+                    }}
+                  >
+                    Email Address
+                  </label>
+                  <input
+                    className={`form-input ${emailErr ? "err" : ""}`}
+                    type="email"
+                    placeholder="you@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "#999",
+                      textTransform: "uppercase",
+                      letterSpacing: ".07em",
+                      marginBottom: 7,
+                    }}
+                  >
+                    You are a freelance... (optional)
+                  </label>
+                  <input
+                    className="form-input"
+                    type="text"
+                    placeholder="e.g. Graphic Designer, Dev..."
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                  />
+                </div>
+
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  style={{
+                    width: "100%",
+                    padding: 15,
+                    background: "#f97316",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 14,
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 16,
+                    fontWeight: 700,
+                    cursor: submitting ? "not-allowed" : "pointer",
+                    opacity: submitting ? 0.7 : 1,
+                    boxShadow: "0 6px 20px rgba(249,115,22,.4)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 9,
+                  }}
+                >
+                  {submitting
+                    ? "Securing your spot..."
+                    : selectedPlan === "free"
+                    ? "✓ Create Free Account"
+                    : selectedPlan === "promo"
+                    ? "🔥 Claim ₱150 Deal"
+                    : "🚀 Get Pro — ₱500/mo"}
+                </button>
+                <p
+                  style={{
+                    fontSize: 11.5,
+                    color: "#bbb",
+                    textAlign: "center",
+                    marginTop: 12,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  No payment today. We'll send instructions after confirming
+                  your spot.
+                  <br />
+                  Cancel anytime. 30-day money-back guarantee.
+                </p>
+                <div
+                  style={{ height: 1, background: "#eee", margin: "16px 0" }}
+                />
+                <p style={{ fontSize: 13, textAlign: "center", color: "#999" }}>
+                  Already have an account?{" "}
+                  <button
+                    onClick={() => {
+                      setModalOpen(false);
+                      onLogin();
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#f97316",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      fontSize: 13,
+                    }}
+                  >
+                    Log In
+                  </button>
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── NAV ── */}
-      {/* FIX 1: reduced padding, flex gap, logo overflow protection */}
       <nav
         style={{
           position: "fixed",
           top: 0,
           left: 0,
           right: 0,
-          zIndex: 300,
+          zIndex: 100,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: scrolled ? "12px 16px" : "18px 16px", // FIXED: was 24px
-          background: scrolled ? "rgba(10,10,10,.97)" : "transparent",
-          backdropFilter: scrolled ? "blur(14px)" : "none",
-          borderBottom: scrolled ? "1px solid rgba(255,255,255,.06)" : "none",
+          padding: isMobile ? "12px 16px" : "14px 32px",
+          background: "rgba(250,248,244,0.92)",
+          backdropFilter: "blur(16px)",
+          borderBottom: "1px solid #e8e4de",
+          boxShadow: scrolled ? "0 2px 24px rgba(0,0,0,.07)" : "none",
           transition: "all .3s",
-          gap: 8,
-          minWidth: 0,
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            flexShrink: 0,
-            minWidth: 0,
-          }}
-        >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div
             style={{
-              width: 34,
-              height: 34,
+              width: 36,
+              height: 36,
               background: "#f97316",
-              borderRadius: 9,
+              borderRadius: 10,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontWeight: 900,
               color: "#fff",
-              fontSize: 16,
-              flexShrink: 0,
+              fontSize: 17,
+              boxShadow: "0 4px 12px rgba(249,115,22,.35)",
             }}
           >
             ₣
           </div>
-          {/* FIXED: hide text on very small screens to prevent overlap */}
           {!isMobile && (
             <span
               style={{
-                fontFamily: "'Playfair Display',serif",
-                fontSize: 18,
-                color: "#fff",
-                whiteSpace: "nowrap",
+                fontFamily: "'Playfair Display', serif",
+                fontSize: 17,
+                fontWeight: 700,
               }}
             >
               FreelanceFunds
             </span>
           )}
         </div>
-
-        {/* Desktop nav links — only on non-mobile */}
-        {!isMobile && (
-          <div
-            style={{
-              display: "flex",
-              gap: 24,
-              alignItems: "center",
-              flex: 1,
-              justifyContent: "center",
-            }}
-          >
-            {[
-              ["#features", "Features"],
-              ["#how", "How It Works"],
-              ["#pricing", "Pricing"],
-            ].map(([h, l]) => (
-              <a
-                key={h}
-                href={h}
-                style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "#666",
-                  transition: "color .2s",
-                  whiteSpace: "nowrap",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#666")}
-              >
-                {l}
-              </a>
-            ))}
-          </div>
-        )}
-
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            flexShrink: 0,
-          }}
-        >
+        <div style={{ display: "flex", gap: 8 }}>
           {!isMobile && (
             <button
               onClick={onLogin}
               style={{
                 background: "none",
-                border: "1.5px solid rgba(255,255,255,.15)",
-                color: "#ccc",
-                borderRadius: 9,
-                padding: "8px 16px",
-                fontSize: 13,
-                fontWeight: 700,
+                border: "1.5px solid #e8e4de",
+                color: "#6b6460",
+                borderRadius: 10,
+                padding: "9px 18px",
+                fontSize: 14,
+                fontWeight: 600,
                 cursor: "pointer",
                 fontFamily: "inherit",
-                transition: "all .2s",
-                whiteSpace: "nowrap",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "rgba(255,255,255,.4)";
-                e.currentTarget.style.color = "#fff";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "rgba(255,255,255,.15)";
-                e.currentTarget.style.color = "#ccc";
               }}
             >
               Log In
             </button>
           )}
           <button
-            onClick={onRegister}
+            onClick={() => openModal("promo")}
             style={{
               background: "#f97316",
               color: "#fff",
               border: "none",
-              borderRadius: 9,
-              padding: isMobile ? "8px 14px" : "9px 20px",
-              fontSize: 13,
+              borderRadius: 10,
+              padding: "10px 20px",
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: 14,
               fontWeight: 700,
               cursor: "pointer",
-              fontFamily: "inherit",
-              transition: "background .2s",
-              whiteSpace: "nowrap",
+              boxShadow: "0 4px 14px rgba(249,115,22,.35)",
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "#ea6c0a")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "#f97316")}
           >
-            {isMobile ? "Sign Up" : "Get Started Free"}
+            🔥 {isMobile ? "₱150 Deal" : "Promo: ₱150 for 7 Days"}
           </button>
-          {isMobile && (
-            <button
-              onClick={() => setNavOpen((o) => !o)}
-              style={{
-                background: "rgba(255,255,255,.06)",
-                border: "1px solid rgba(255,255,255,.1)",
-                color: "#fff",
-                width: 36,
-                height: 36,
-                borderRadius: 8,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 16,
-                flexShrink: 0,
-              }}
-            >
-              {navOpen ? <X size={16} /> : "☰"}
-            </button>
-          )}
         </div>
       </nav>
 
-      {/* Mobile nav drawer */}
-      {isMobile && navOpen && (
+      {/* ── URGENCY BAR ── */}
+      <div
+        style={{
+          background: "linear-gradient(135deg,#f97316,#c2410c)",
+          padding: "14px 24px",
+          paddingTop: isMobile ? 68 : 70,
+          textAlign: "center",
+          color: "#fff",
+        }}
+      >
         <div
           style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 290,
-            background: "rgba(0,0,0,.85)",
-            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 14,
+            flexWrap: "wrap",
           }}
-          onClick={() => setNavOpen(false)}
         >
           <div
             style={{
-              position: "absolute",
-              top: 68,
-              left: 16,
-              right: 16,
-              background: "#111",
-              borderRadius: 18,
-              border: "1px solid rgba(255,255,255,.08)",
-              padding: 20,
+              background: "rgba(255,255,255,.2)",
+              border: "1px solid rgba(255,255,255,.3)",
+              borderRadius: 100,
+              padding: "5px 16px",
+              fontSize: 13,
+              fontWeight: 700,
               display: "flex",
-              flexDirection: "column",
-              gap: 4,
+              alignItems: "center",
+              gap: 7,
             }}
-            onClick={(e) => e.stopPropagation()}
           >
-            {[
-              ["#features", "Features"],
-              ["#how", "How It Works"],
-              ["#pricing", "Pricing"],
-            ].map(([h, l]) => (
-              <a
-                key={h}
-                href={h}
-                onClick={() => setNavOpen(false)}
-                style={{
-                  fontSize: 16,
-                  fontWeight: 700,
-                  color: "#ccc",
-                  padding: "12px 16px",
-                  borderRadius: 10,
-                  display: "block",
-                }}
-              >
-                {l}
-              </a>
-            ))}
-            <div
-              style={{
-                height: 1,
-                background: "rgba(255,255,255,.06)",
-                margin: "8px 0",
-              }}
-            />
-            <button
-              onClick={() => {
-                setNavOpen(false);
-                onLogin();
-              }}
-              style={{
-                background: "none",
-                border: "1.5px solid rgba(255,255,255,.15)",
-                color: "#ccc",
-                borderRadius: 12,
-                padding: 13,
-                fontSize: 15,
-                fontWeight: 700,
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              Log In
-            </button>
-            <button
-              onClick={() => {
-                setNavOpen(false);
-                onRegister();
-              }}
-              style={{
-                background: "#f97316",
-                color: "#fff",
-                border: "none",
-                borderRadius: 12,
-                padding: 13,
-                fontSize: 15,
-                fontWeight: 700,
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              Get Started Free
-            </button>
+            <div className="pulse-dot" /> Early Access Open
           </div>
+          <p style={{ fontSize: isMobile ? 12 : 14, fontWeight: 600 }}>
+            🔥 <strong>7-Day Launch Promo:</strong> Get full Pro for just{" "}
+            <strong>₱150</strong> — offer expires soon.
+          </p>
         </div>
-      )}
+      </div>
 
-      {/* HERO */}
+      {/* ── HERO ── */}
       <section
         style={{
           minHeight: "100vh",
@@ -804,7 +1081,7 @@ function LandingPage({ onLogin, onRegister }) {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          padding: isMobile ? "100px 16px 60px" : "120px 24px 80px",
+          padding: isMobile ? "80px 16px 60px" : "100px 24px 80px",
           textAlign: "center",
           position: "relative",
           overflow: "hidden",
@@ -813,385 +1090,623 @@ function LandingPage({ onLogin, onRegister }) {
         <div
           style={{
             position: "absolute",
-            top: "20%",
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: 600,
-            height: 600,
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle,rgba(249,115,22,.12) 0%,transparent 65%)",
+            inset: 0,
             pointerEvents: "none",
+            background:
+              "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(249,115,22,.08) 0%, transparent 60%)",
           }}
         />
+
         <div
-          className="fade-u"
+          className="lp-fade"
           style={{
             display: "inline-flex",
             alignItems: "center",
-            gap: 7,
+            gap: 8,
             background: "rgba(249,115,22,.1)",
             border: "1px solid rgba(249,115,22,.25)",
             color: "#f97316",
             borderRadius: 100,
-            padding: "6px 16px",
-            fontSize: 11,
+            padding: "7px 18px",
+            fontSize: 12,
             fontWeight: 700,
-            marginBottom: 28,
             letterSpacing: ".07em",
+            textTransform: "uppercase",
+            marginBottom: 28,
+            position: "relative",
+            zIndex: 1,
           }}
         >
-          BUILT FOR FILIPINO FREELANCERS
+          <div className="pulse-dot" /> Built for Filipino Freelancers
         </div>
+
         <h1
-          className="fade-u-1"
+          className="lp-fade-1"
           style={{
-            fontFamily: "'Playfair Display',serif",
+            fontFamily: "'Playfair Display', serif",
             fontSize: isMobile
-              ? "clamp(34px,10vw,52px)"
-              : "clamp(44px,6vw,80px)",
-            lineHeight: 1.04,
+              ? "clamp(36px,10vw,52px)"
+              : "clamp(38px,7vw,80px)",
+            lineHeight: 1.03,
             letterSpacing: "-0.03em",
-            marginBottom: 22,
-            maxWidth: 860,
+            maxWidth: 820,
+            position: "relative",
+            zIndex: 1,
+            marginBottom: 24,
           }}
         >
-          Stop losing money
+          Stop guessing at
           <br />
-          every{" "}
           <span style={{ color: "#f97316", fontStyle: "italic" }}>
-            tax season.
+            every tax season.
           </span>
         </h1>
+
         <p
-          className="fade-u-2"
+          className="lp-fade-2"
           style={{
-            fontSize: isMobile ? 15 : 17,
-            color: "#666",
+            fontSize: isMobile ? 15 : 18,
+            color: "#6b6460",
             maxWidth: 520,
-            lineHeight: 1.85,
-            marginBottom: 36,
-            padding: "0 8px",
+            lineHeight: 1.8,
+            marginBottom: 16,
+            position: "relative",
+            zIndex: 1,
           }}
         >
           Track expenses across multiple clients, split costs automatically, and
-          generate BIR-ready tax reports — in one place.
+          generate BIR-ready reports — in one place.
         </p>
+
         <div
-          className="fade-u-3"
+          className="lp-fade-3"
           style={{
             display: "flex",
             gap: 12,
             flexWrap: "wrap",
             justifyContent: "center",
-            marginBottom: 56,
+            marginBottom: 60,
+            position: "relative",
+            zIndex: 1,
           }}
         >
           <button
-            onClick={onRegister}
+            onClick={() => openModal("promo")}
             style={{
               background: "#f97316",
               color: "#fff",
               border: "none",
-              borderRadius: 13,
-              padding: isMobile ? "13px 26px" : "15px 32px",
-              fontSize: isMobile ? 15 : 16,
-              fontWeight: 800,
-              cursor: "pointer",
-              fontFamily: "inherit",
-              transition: "all .2s",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "#ea6c0a";
-              e.currentTarget.style.transform = "translateY(-2px)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "#f97316";
-              e.currentTarget.style.transform = "translateY(0)";
-            }}
-          >
-            <UserPlus size={16} /> Create Free Account
-          </button>
-          <button
-            onClick={onLogin}
-            style={{
-              background: "rgba(255,255,255,.05)",
-              color: "#aaa",
-              border: "1px solid rgba(255,255,255,.12)",
-              borderRadius: 13,
-              padding: isMobile ? "12px 22px" : "14px 28px",
-              fontSize: isMobile ? 15 : 16,
+              borderRadius: 14,
+              padding: isMobile ? "14px 28px" : "17px 38px",
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: isMobile ? 15 : 17,
               fontWeight: 700,
               cursor: "pointer",
-              fontFamily: "inherit",
+              boxShadow: "0 8px 28px rgba(249,115,22,.4)",
               display: "flex",
               alignItems: "center",
-              gap: 8,
+              gap: 9,
             }}
           >
-            <LogIn size={16} /> Log In
+            🔥 7-Day Promo — ₱150
+          </button>
+          <button
+            onClick={() => openModal("free")}
+            style={{
+              background: "rgba(255,255,255,.8)",
+              color: "#2a2825",
+              border: "1.5px solid #e8e4de",
+              borderRadius: 14,
+              padding: isMobile ? "13px 22px" : "16px 28px",
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: isMobile ? 15 : 16,
+              fontWeight: 600,
+              cursor: "pointer",
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            Try Free First
           </button>
         </div>
 
-        {/* Mock dashboard */}
+        {/* Mock Dashboard */}
         <div
-          className="bob"
+          className="lp-float lp-fade-4"
           style={{
-            width: "min(500px,90vw)",
-            background: "#111",
-            border: "1px solid rgba(255,255,255,.08)",
-            borderRadius: 20,
-            overflow: "hidden",
-            boxShadow: "0 40px 100px rgba(0,0,0,.8)",
+            filter: "drop-shadow(0 32px 64px rgba(0,0,0,.15))",
             position: "relative",
-            zIndex: 2,
+            zIndex: 1,
           }}
         >
           <div
             style={{
-              background: "#161616",
-              padding: "10px 16px",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              borderBottom: "1px solid rgba(255,255,255,.05)",
+              background: "#111",
+              borderRadius: 22,
+              overflow: "hidden",
+              width: `min(560px, ${isMobile ? "92vw" : "92vw"})`,
+              maxWidth: 560,
+              border: "1px solid rgba(255,255,255,.06)",
             }}
           >
-            {["#ef4444", "#eab308", "#22c55e"].map((c) => (
-              <div
-                key={c}
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: "50%",
-                  background: c,
-                }}
-              />
-            ))}
             <div
               style={{
-                flex: 1,
-                marginLeft: 8,
-                background: "rgba(255,255,255,.05)",
-                borderRadius: 5,
-                padding: "3px 12px",
-                fontSize: 10,
-                color: "#444",
+                background: "#1a1a1a",
+                padding: "10px 16px",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                borderBottom: "1px solid rgba(255,255,255,.05)",
               }}
             >
-              freelancefunds — Dashboard
-            </div>
-          </div>
-          <div style={{ padding: isMobile ? 14 : 20 }}>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3,1fr)",
-                gap: 8,
-                marginBottom: 16,
-              }}
-            >
-              {[
-                ["Total Tracked", "₱24,390", "#fff"],
-                ["Tax Savings", "₱4,878", "#86efac"],
-                ["Projects", "4", "#fff"],
-              ].map(([l, v, c]) => (
+              {["#ef4444", "#eab308", "#22c55e"].map((c) => (
                 <div
-                  key={l}
+                  key={c}
                   style={{
-                    background: "#1a1a1a",
-                    borderRadius: 10,
-                    padding: "10px 8px",
+                    width: 11,
+                    height: 11,
+                    borderRadius: "50%",
+                    background: c,
                   }}
-                >
-                  <div
-                    style={{
-                      fontSize: 7,
-                      color: "#444",
-                      fontWeight: 700,
-                      textTransform: "uppercase",
-                      letterSpacing: ".08em",
-                      marginBottom: 4,
-                    }}
-                  >
-                    {l}
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "'Playfair Display',serif",
-                      fontSize: isMobile ? 13 : 16,
-                      color: c,
-                    }}
-                  >
-                    {v}
-                  </div>
-                </div>
+                />
               ))}
+              <div
+                style={{
+                  flex: 1,
+                  marginLeft: 8,
+                  background: "rgba(255,255,255,.05)",
+                  borderRadius: 6,
+                  padding: "4px 12px",
+                  fontSize: 10,
+                  color: "#444",
+                  fontFamily: "monospace",
+                }}
+              >
+                freelancefunds.app — Q3 Report
+              </div>
             </div>
-            {[
-              {
-                ic: Monitor,
-                nm: "Adobe Creative Cloud",
-                clr: "#8b5cf6",
-                sp: [60, 40],
-                cs: ["#f97316", "#3b82f6"],
-                a: "₱1,200",
-              },
-              {
-                ic: Utensils,
-                nm: "Client Lunch – BGC",
-                clr: "#f97316",
-                sp: [100],
-                cs: ["#10b981"],
-                a: "₱850",
-              },
-              {
-                ic: Car,
-                nm: "Grab to Client Office",
-                clr: "#3b82f6",
-                sp: [50, 50],
-                cs: ["#f97316", "#a855f7"],
-                a: "₱320",
-              },
-            ].map((r, i) => {
-              const RIc = r.ic;
-              return (
+            <div style={{ padding: 22 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3,1fr)",
+                  gap: 10,
+                  marginBottom: 18,
+                }}
+              >
+                {[
+                  ["Tracked", "₱48,320", "#fff"],
+                  ["Tax Savings", "₱9,664", "#86efac"],
+                  ["Projects", "6", "#fff"],
+                ].map(([l, v, c]) => (
+                  <div
+                    key={l}
+                    style={{
+                      background: "#1a1a1a",
+                      borderRadius: 12,
+                      padding: "12px 14px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 8,
+                        color: "#444",
+                        textTransform: "uppercase",
+                        letterSpacing: ".08em",
+                        marginBottom: 5,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {l}
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: "'Playfair Display', serif",
+                        fontSize: isMobile ? 14 : 18,
+                        color: c,
+                      }}
+                    >
+                      {v}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {[
+                {
+                  icon: "💻",
+                  name: "Adobe Creative Cloud",
+                  splits: [
+                    { w: 60, c: "#f97316" },
+                    { w: 40, c: "#3b82f6" },
+                  ],
+                  amt: "₱1,200",
+                },
+                {
+                  icon: "🍽️",
+                  name: "Client Lunch – BGC",
+                  splits: [{ w: 100, c: "#10b981" }],
+                  amt: "₱850",
+                },
+                {
+                  icon: "🚗",
+                  name: "Grab to Makati Office",
+                  splits: [
+                    { w: 50, c: "#f97316" },
+                    { w: 50, c: "#a855f7" },
+                  ],
+                  amt: "₱320",
+                },
+              ].map((r, i) => (
                 <div
                   key={i}
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    padding: "10px 0",
+                    padding: "11px 0",
                     borderBottom:
                       i < 2 ? "1px solid rgba(255,255,255,.04)" : "none",
                   }}
                 >
                   <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      flex: 1,
-                      minWidth: 0,
-                    }}
+                    style={{ display: "flex", alignItems: "center", gap: 10 }}
                   >
                     <div
                       style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 8,
-                        background: `${r.clr}18`,
+                        width: 34,
+                        height: 34,
+                        borderRadius: 9,
+                        background: "rgba(249,115,22,.15)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        color: r.clr,
-                        flexShrink: 0,
+                        fontSize: 15,
                       }}
                     >
-                      <RIc size={14} />
+                      {r.icon}
                     </div>
-                    <div style={{ minWidth: 0 }}>
+                    <div>
                       <div
                         style={{
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: 600,
                           color: "#ccc",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
+                          marginBottom: 5,
                         }}
                       >
-                        {r.nm}
+                        {r.name}
                       </div>
                       <div
                         style={{
                           display: "flex",
-                          gap: 2,
                           height: 3,
                           borderRadius: 2,
                           overflow: "hidden",
-                          marginTop: 4,
+                          gap: 1,
+                          width: 110,
                         }}
                       >
-                        {r.sp.map((w, j) => (
+                        {r.splits.map((s, j) => (
                           <div
                             key={j}
-                            style={{ width: `${w}%`, background: r.cs[j] }}
+                            style={{ width: `${s.w}%`, background: s.c }}
                           />
                         ))}
                       </div>
                     </div>
                   </div>
-                  <div
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 800,
-                      color: "#fff",
-                      flexShrink: 0,
-                      marginLeft: 8,
-                    }}
-                  >
-                    {r.a}
+                  <div style={{ fontWeight: 800, fontSize: 13, color: "#fff" }}>
+                    {r.amt}
                   </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* MARQUEE */}
+      {/* ── TICKER ── */}
       <div
         style={{
           background: "#111",
+          borderTop: "1px solid #1e1e1e",
+          borderBottom: "1px solid #1e1e1e",
+          padding: "12px 0",
           overflow: "hidden",
-          padding: "13px 0",
-          borderTop: "1px solid rgba(255,255,255,.05)",
-          borderBottom: "1px solid rgba(255,255,255,.05)",
+          whiteSpace: "nowrap",
         }}
       >
-        <div className="mq">
-          {[...Array(2)].flatMap(() =>
-            [
-              ["Adobe CC", "split 60/40"],
-              ["Client meals", "auto-allocated"],
-              ["BIR reports", "one click"],
-              ["Phone bills", "split by hours"],
-              ["Grab rides", "per project"],
-              ["₱18,000", "avg annual savings"],
-            ].map(([l, a], i) => (
-              <div
-                key={i}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "0 28px",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: "#444",
-                  borderRight: "1px solid #1a1a1a",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <span style={{ color: "#666" }}>{l}</span>{" "}
-                <span style={{ color: "#f97316" }}>{a}</span>
-              </div>
-            ))
-          )}
+        <div className="ticker-inner">
+          {[...tickerItems, ...tickerItems].map(([l, a], i) => (
+            <div
+              key={i}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "0 32px",
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#444",
+                borderRight: "1px solid #1e1e1e",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <span style={{ color: "#666" }}>{l}</span>{" "}
+              <span style={{ color: "#f97316" }}>{a}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* FEATURES */}
+      {/* ── SOCIAL PROOF ── */}
       <section
-        id="features"
         style={{
+          background: "#fff",
+          padding: isMobile ? "60px 16px" : "72px 24px",
+        }}
+      >
+        <div style={{ maxWidth: 1040, margin: "0 auto" }}>
+          {/* Countdown Banner */}
+          <div
+            style={{
+              background: "linear-gradient(135deg,#0f0e0d,#1a0e00)",
+              border: "2px solid rgba(249,115,22,.35)",
+              borderRadius: 20,
+              padding: isMobile ? "20px 16px" : "28px 32px",
+              marginBottom: 64,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 16,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                flexWrap: "wrap",
+                justifyContent: "center",
+              }}
+            >
+              <span
+                style={{
+                  background: "#f97316",
+                  color: "#fff",
+                  fontSize: 11,
+                  fontWeight: 800,
+                  padding: "4px 14px",
+                  borderRadius: 20,
+                  letterSpacing: ".06em",
+                  textTransform: "uppercase",
+                }}
+              >
+                🔥 7-Day Launch Promo
+              </span>
+              <span
+                style={{
+                  fontSize: isMobile ? 14 : 15,
+                  fontWeight: 700,
+                  color: "#fff",
+                }}
+              >
+                Get full Pro for just{" "}
+                <span
+                  style={{
+                    color: "#f97316",
+                    fontFamily: "'Playfair Display',serif",
+                    fontSize: 22,
+                  }}
+                >
+                  ₱150
+                </span>{" "}
+                — then ₱500/mo
+              </span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                gap: isMobile ? 6 : 12,
+                alignItems: "center",
+                flexWrap: "wrap",
+                justifyContent: "center",
+              }}
+            >
+              <span style={{ fontSize: 13, color: "#888" }}>
+                Offer expires in:
+              </span>
+              <div style={{ display: "flex", gap: 8 }}>
+                {[
+                  ["days", timeLeft.days],
+                  ["hrs", timeLeft.hrs],
+                  ["min", timeLeft.min],
+                  ["sec", timeLeft.sec],
+                ].map(([label, val]) => (
+                  <div
+                    key={label}
+                    style={{
+                      background: "rgba(255,255,255,.07)",
+                      border: `1px solid ${
+                        label === "sec"
+                          ? "rgba(249,115,22,.3)"
+                          : "rgba(255,255,255,.1)"
+                      }`,
+                      borderRadius: 10,
+                      padding: "8px 14px",
+                      textAlign: "center",
+                      minWidth: 52,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontFamily: "'Playfair Display',serif",
+                        fontSize: 22,
+                        color: label === "sec" ? "#f97316" : "#fff",
+                        lineHeight: 1,
+                      }}
+                    >
+                      {pad(val)}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 9,
+                        color: "#555",
+                        textTransform: "uppercase",
+                        letterSpacing: ".08em",
+                        marginTop: 3,
+                      }}
+                    >
+                      {label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => openModal("promo")}
+                style={{
+                  background: "#f97316",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 11,
+                  padding: "11px 22px",
+                  fontFamily: "'DM Sans',sans-serif",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  boxShadow: "0 4px 16px rgba(249,115,22,.4)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Claim ₱150 Deal →
+              </button>
+            </div>
+          </div>
+
+          <p
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: "#f97316",
+              textTransform: "uppercase",
+              letterSpacing: ".1em",
+              marginBottom: 14,
+            }}
+          >
+            What Beta Testers Say
+          </p>
+          <h2
+            style={{
+              fontFamily: "'Playfair Display',serif",
+              fontSize: isMobile
+                ? "clamp(26px,6vw,40px)"
+                : "clamp(26px,4.5vw,52px)",
+              lineHeight: 1.05,
+              letterSpacing: "-0.03em",
+              marginBottom: 32,
+            }}
+          >
+            Filipino freelancers{" "}
+            <span style={{ color: "#f97316", fontStyle: "italic" }}>
+              already love it.
+            </span>
+          </h2>
+          <div
+            className="lp-testi-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)",
+              gap: 16,
+            }}
+          >
+            {testimonials.map((t, i) => (
+              <div
+                key={i}
+                className="lp-testi"
+                style={{
+                  background: "#fff",
+                  border: "1px solid #e8e4de",
+                  borderRadius: 20,
+                  padding: 28,
+                  transition: "all .2s",
+                  position: "relative",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 14,
+                    right: 22,
+                    fontFamily: "'Playfair Display',serif",
+                    fontSize: 80,
+                    lineHeight: 1,
+                    color: "rgba(249,115,22,.08)",
+                    pointerEvents: "none",
+                  }}
+                >
+                  "
+                </div>
+                <div
+                  style={{ color: "#f97316", fontSize: 14, marginBottom: 12 }}
+                >
+                  {"★".repeat(t.stars)}
+                </div>
+                <p
+                  style={{
+                    fontSize: 13.5,
+                    lineHeight: 1.85,
+                    color: "#2a2825",
+                    marginBottom: 18,
+                  }}
+                >
+                  {t.text}
+                </p>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: "50%",
+                      background: t.color,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 800,
+                      fontSize: 15,
+                      color: "#fff",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {t.initial}
+                  </div>
+                  <div>
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        fontSize: 13,
+                        color: "#0f0e0d",
+                      }}
+                    >
+                      {t.name}
+                    </div>
+                    <div
+                      style={{ fontSize: 11, color: "#6b6460", marginTop: 1 }}
+                    >
+                      {t.role}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── PAIN POINTS ── */}
+      <section
+        style={{
+          background: "#0f0e0d",
           padding: isMobile ? "72px 16px" : "100px 24px",
-          background: "#0a0a0a",
         }}
       >
         <div style={{ maxWidth: 1040, margin: "0 auto" }}>
@@ -1200,471 +1715,797 @@ function LandingPage({ onLogin, onRegister }) {
               fontSize: 11,
               fontWeight: 700,
               color: "#f97316",
-              letterSpacing: ".09em",
               textTransform: "uppercase",
-              marginBottom: 12,
-              textAlign: "center",
+              letterSpacing: ".1em",
+              marginBottom: 14,
             }}
           >
-            Why FreelanceFunds
+            The Problem
           </p>
           <h2
             style={{
               fontFamily: "'Playfair Display',serif",
               fontSize: isMobile
-                ? "clamp(24px,6vw,40px)"
-                : "clamp(28px,4vw,48px)",
-              letterSpacing: "-0.02em",
-              lineHeight: 1.1,
-              marginBottom: 48,
+                ? "clamp(26px,6vw,40px)"
+                : "clamp(26px,4.5vw,52px)",
+              lineHeight: 1.05,
+              letterSpacing: "-0.03em",
               color: "#fff",
-              textAlign: "center",
+              marginBottom: 40,
             }}
           >
-            Built for how Filipino
+            Filipino freelancers live
             <br />
-            <span style={{ fontStyle: "italic", color: "#f97316" }}>
-              freelancers actually work.
+            <span style={{ color: "#f97316", fontStyle: "italic" }}>
+              the feast-or-famine cycle.
             </span>
           </h2>
           <div
+            className="lp-pain-grid"
             style={{
               display: "grid",
-              gridTemplateColumns: isMobile
-                ? "1fr"
-                : isTablet
-                ? "repeat(2,1fr)"
-                : "repeat(3,1fr)",
-              gap: 14,
+              gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+              gap: 24,
+              marginBottom: 48,
             }}
           >
-            {features.map((f, i) => (
-              <div key={i} className="feature-card">
+            {[
+              {
+                emoji: "😰",
+                title: "Tax season panic",
+                body: "Every quarter-end becomes a scramble to find receipts, reconstruct expenses from memory, and hope you haven't missed anything BIR-reportable.",
+              },
+              {
+                emoji: "🤯",
+                title: "Multi-client chaos",
+                body: "You pay for Adobe CC but use it for 3 clients. Your phone bill covers 4 projects. How do you split these? Most freelancers just guess — and lose money.",
+              },
+              {
+                emoji: "📊",
+                title: "Spreadsheet hell",
+                body: "Spreadsheets don't auto-split. They don't calculate tax savings. They don't generate reports. And one missed entry breaks everything.",
+              },
+              {
+                emoji: "💸",
+                title: "Leaving money on the table",
+                body: "Business expenses are tax-deductible in the Philippines — but only if you can prove them. Most freelancers under-claim because tracking feels too hard.",
+              },
+            ].map((p, i) => (
+              <div
+                key={i}
+                className="lp-pain"
+                style={{
+                  border: "1px solid rgba(255,255,255,.08)",
+                  borderRadius: 20,
+                  padding: 28,
+                  background: "rgba(255,255,255,.03)",
+                  transition: "all .2s",
+                }}
+              >
+                <span
+                  style={{ fontSize: 28, marginBottom: 12, display: "block" }}
+                >
+                  {p.emoji}
+                </span>
                 <div
                   style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 12,
-                    background: `${f.color}18`,
-                    border: `1px solid ${f.color}30`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: 14,
-                  }}
-                >
-                  <f.Icon size={20} color={f.color} />
-                </div>
-                <p
-                  style={{
-                    fontSize: 15,
                     fontWeight: 800,
-                    color: "#e5e5e5",
+                    fontSize: 16,
                     marginBottom: 8,
+                    color: "#e5e5e5",
                   }}
                 >
-                  {f.title}
-                </p>
-                <p style={{ fontSize: 13, color: "#555", lineHeight: 1.8 }}>
-                  {f.body}
+                  {p.title}
+                </div>
+                <p style={{ fontSize: 13, color: "#666", lineHeight: 1.8 }}>
+                  {p.body}
                 </p>
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* HOW IT WORKS */}
-      <section
-        id="how"
-        style={{
-          padding: isMobile ? "72px 16px" : "100px 24px",
-          background: "#060606",
-          borderTop: "1px solid rgba(255,255,255,.05)",
-        }}
-      >
-        <div style={{ maxWidth: 800, margin: "0 auto" }}>
-          <p
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              color: "#f97316",
-              letterSpacing: ".09em",
-              textTransform: "uppercase",
-              marginBottom: 12,
-              textAlign: "center",
-            }}
-          >
-            How it works
-          </p>
-          <h2
-            style={{
-              fontFamily: "'Playfair Display',serif",
-              fontSize: isMobile
-                ? "clamp(24px,6vw,40px)"
-                : "clamp(28px,4vw,48px)",
-              letterSpacing: "-0.02em",
-              lineHeight: 1.1,
-              marginBottom: 52,
-              color: "#fff",
-              textAlign: "center",
-            }}
-          >
-            Value in{" "}
-            <span style={{ fontStyle: "italic", color: "#f97316" }}>
-              under 2 minutes.
-            </span>
-          </h2>
-          {[
-            {
-              n: "01",
-              Icon: UserPlus,
-              t: "Create a free account",
-              b: "Sign up with email and password. Your data is private — no one else sees your projects or expenses.",
-            },
-            {
-              n: "02",
-              Icon: FolderOpen,
-              t: "Add a project per client",
-              b: "Create one project per client. Set a budget, pick a color. Takes 30 seconds.",
-            },
-            {
-              n: "03",
-              Icon: Zap,
-              t: "Log expenses with Smart Split",
-              b: "Enter any expense and split the cost across clients by percentage. Adobe CC at 60/40? Done instantly.",
-            },
-            {
-              n: "04",
-              Icon: FileBarChart2,
-              t: "Export your BIR-ready report",
-              b: "At quarter-end, open Reports and export. Hand the CSV or PDF directly to your accountant. No panic.",
-            },
-          ].map((s, i, arr) => (
-            <div
-              key={i}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "56px 1fr",
-                gap: 20,
-                padding: "32px 0",
-                borderBottom:
-                  i < arr.length - 1
-                    ? "1px solid rgba(255,255,255,.05)"
-                    : "none",
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: "'Playfair Display',serif",
-                  fontSize: 42,
-                  color: "rgba(255,255,255,.06)",
-                  lineHeight: 1,
-                  letterSpacing: "-0.04em",
-                }}
-              >
-                {s.n}
-              </div>
-              <div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    marginBottom: 8,
-                  }}
-                >
-                  <s.Icon size={16} color="#f97316" />
-                  <span
-                    style={{
-                      fontSize: 18,
-                      fontWeight: 800,
-                      color: "#e5e5e5",
-                      letterSpacing: "-0.01em",
-                    }}
-                  >
-                    {s.t}
-                  </span>
-                </div>
-                <p style={{ fontSize: 14, color: "#555", lineHeight: 1.85 }}>
-                  {s.b}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* PRICING */}
-      <section
-        id="pricing"
-        style={{
-          padding: isMobile ? "72px 16px" : "100px 24px",
-          background: "#0a0a0a",
-        }}
-      >
-        <div style={{ maxWidth: 700, margin: "0 auto" }}>
-          <p
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              color: "#f97316",
-              letterSpacing: ".09em",
-              textTransform: "uppercase",
-              marginBottom: 12,
-              textAlign: "center",
-            }}
-          >
-            Simple pricing
-          </p>
-          <h2
-            style={{
-              fontFamily: "'Playfair Display',serif",
-              fontSize: isMobile
-                ? "clamp(24px,6vw,40px)"
-                : "clamp(28px,4vw,48px)",
-              letterSpacing: "-0.02em",
-              lineHeight: 1.1,
-              marginBottom: 48,
-              color: "#fff",
-              textAlign: "center",
-            }}
-          >
-            Start free.
-            <br />
-            <span style={{ fontStyle: "italic", color: "#f97316" }}>
-              Upgrade when ready.
-            </span>
-          </h2>
           <div
+            className="lp-ba"
             style={{
               display: "grid",
               gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
               gap: 16,
             }}
           >
-            {[
-              {
-                label: "Free",
-                price: "₱0",
-                sub: "forever · no card needed",
-                feats: [
-                  "50 expenses/month",
-                  "3 projects",
-                  "2-way split",
-                  "CSV export",
-                  "Private per account",
-                ],
-                no: ["AI suggestions", "PDF reports", "4-way split"],
-                accent: "#555",
-              },
-              {
-                label: "Pro",
-                price: "₱500",
-                sub: "per month · cancel anytime",
-                feats: [
-                  "Unlimited expenses",
-                  "Unlimited projects",
-                  "4-way smart split",
-                  "AI suggestions",
-                  "PDF tax reports",
-                  "Receipt uploads",
-                ],
-                no: [],
-                accent: "#f97316",
-                popular: true,
-              },
-            ].map((p) => (
+            <div
+              style={{
+                borderRadius: 18,
+                padding: 24,
+                background: "rgba(239,68,68,.08)",
+                border: "1px solid rgba(239,68,68,.2)",
+              }}
+            >
               <div
-                key={p.label}
                 style={{
-                  background: "#111",
-                  border: `2px solid ${p.accent}`,
-                  borderRadius: 22,
-                  padding: isMobile ? 24 : 32,
-                  position: "relative",
+                  fontSize: 10,
+                  fontWeight: 800,
+                  textTransform: "uppercase",
+                  letterSpacing: ".08em",
+                  marginBottom: 14,
+                  color: "#ef4444",
                 }}
               >
-                {p.popular && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: -12,
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      background: "#f97316",
-                      color: "#fff",
-                      fontSize: 10,
-                      fontWeight: 800,
-                      padding: "3px 14px",
-                      borderRadius: 20,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    MOST POPULAR
-                  </div>
-                )}
-                <p
+                ✗ Without FreelanceFunds
+              </div>
+              {[
+                "Spreadsheets for every client, manually updated",
+                "Forgetting to log expenses until quarter-end",
+                "Guessing how to split shared costs",
+                "No BIR report — you wing it with your accountant",
+                "Stress, underclaiming, and losing ₱18,000+ per year",
+              ].map((item, i) => (
+                <div
+                  key={i}
                   style={{
-                    fontSize: 11,
-                    fontWeight: 800,
-                    color: p.popular ? "#f97316" : "#555",
-                    letterSpacing: ".08em",
-                    textTransform: "uppercase",
-                    marginBottom: 10,
+                    fontSize: 13,
+                    lineHeight: 1.75,
+                    color: "#888",
+                    marginBottom: 8,
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 7,
                   }}
                 >
-                  {p.label}
-                </p>
-                <p
+                  <span
+                    style={{ color: "#ef4444", flexShrink: 0, marginTop: 2 }}
+                  >
+                    ✗
+                  </span>{" "}
+                  {item}
+                </div>
+              ))}
+            </div>
+            <div
+              style={{
+                borderRadius: 18,
+                padding: 24,
+                background: "rgba(16,185,129,.08)",
+                border: "1px solid rgba(16,185,129,.2)",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 10,
+                  fontWeight: 800,
+                  textTransform: "uppercase",
+                  letterSpacing: ".08em",
+                  marginBottom: 14,
+                  color: "#10b981",
+                }}
+              >
+                ✓ With FreelanceFunds
+              </div>
+              {[
+                "One dashboard for all clients, live and organized",
+                "Log an expense in under 20 seconds",
+                "Smart Split auto-divides costs by percentage",
+                "One-click BIR-ready export — CSV or PDF",
+                "Peace of mind, documented savings, less tax stress",
+              ].map((item, i) => (
+                <div
+                  key={i}
                   style={{
-                    fontFamily: "'Playfair Display',serif",
-                    fontSize: 40,
-                    color: p.popular ? "#f97316" : "#fff",
-                    lineHeight: 1,
-                    marginBottom: 4,
+                    fontSize: 13,
+                    lineHeight: 1.75,
+                    color: "#888",
+                    marginBottom: 8,
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 7,
                   }}
                 >
-                  {p.price}
-                </p>
-                <p style={{ fontSize: 12, color: "#444", marginBottom: 20 }}>
-                  {p.sub}
-                </p>
-                {p.feats.map((f) => (
-                  <div
-                    key={f}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 9,
-                      marginBottom: 9,
-                    }}
+                  <span
+                    style={{ color: "#10b981", flexShrink: 0, marginTop: 2 }}
                   >
-                    <Check
-                      size={13}
-                      color={p.popular ? "#f97316" : "#10b981"}
-                    />
-                    <span style={{ fontSize: 13, color: "#aaa" }}>{f}</span>
-                  </div>
-                ))}
-                {p.no.map((f) => (
-                  <div
-                    key={f}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 9,
-                      marginBottom: 9,
-                    }}
-                  >
-                    <X size={13} color="#333" />
-                    <span
-                      style={{
-                        fontSize: 13,
-                        color: "#333",
-                        textDecoration: "line-through",
-                      }}
-                    >
-                      {f}
-                    </span>
-                  </div>
-                ))}
-                <button
-                  onClick={onRegister}
+                    ✓
+                  </span>{" "}
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── PRICING ── */}
+      <section
+        style={{
+          background: "#faf8f4",
+          padding: isMobile ? "72px 16px" : "100px 24px",
+        }}
+      >
+        <div style={{ maxWidth: 1040, margin: "0 auto" }}>
+          <p
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: "#f97316",
+              textTransform: "uppercase",
+              letterSpacing: ".1em",
+              marginBottom: 14,
+              textAlign: "center",
+            }}
+          >
+            Simple Pricing
+          </p>
+          <h2
+            style={{
+              fontFamily: "'Playfair Display',serif",
+              fontSize: isMobile
+                ? "clamp(26px,6vw,40px)"
+                : "clamp(26px,4.5vw,52px)",
+              lineHeight: 1.05,
+              letterSpacing: "-0.03em",
+              marginBottom: 48,
+              textAlign: "center",
+            }}
+          >
+            Start free.
+            <br />
+            <span style={{ color: "#f97316", fontStyle: "italic" }}>
+              Upgrade when it clicks.
+            </span>
+          </h2>
+          <div
+            className="lp-pricing-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr" : "1fr 1.1fr 1fr",
+              gap: 16,
+              alignItems: "start",
+            }}
+          >
+            {/* Free */}
+            <div
+              className="lp-price"
+              style={{
+                background: "#fff",
+                border: "1.5px solid #e8e4de",
+                borderRadius: 24,
+                padding: 32,
+                transition: "all .25s",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  textTransform: "uppercase",
+                  letterSpacing: ".1em",
+                  color: "#6b6460",
+                  marginBottom: 10,
+                }}
+              >
+                Free
+              </div>
+              <div
+                style={{
+                  fontFamily: "'Playfair Display',serif",
+                  fontSize: 42,
+                  letterSpacing: "-0.03em",
+                  lineHeight: 1,
+                  color: "#0f0e0d",
+                  marginBottom: 4,
+                }}
+              >
+                ₱0
+              </div>
+              <div style={{ fontSize: 13, color: "#6b6460", marginBottom: 24 }}>
+                forever · no card needed
+              </div>
+              <div
+                style={{ height: 1, background: "#e8e4de", marginBottom: 20 }}
+              />
+              {[
+                "50 expenses/month",
+                "3 client projects",
+                "2-way Smart Split",
+                "CSV export",
+                "Private per account",
+              ].map((f) => (
+                <div
+                  key={f}
                   style={{
-                    width: "100%",
-                    padding: 13,
-                    borderRadius: 12,
-                    border: `2px solid ${
-                      p.popular ? "#f97316" : "rgba(255,255,255,.12)"
-                    }`,
-                    background: p.popular ? "#f97316" : "transparent",
-                    color: p.popular ? "#fff" : "#888",
-                    fontSize: 14,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                    marginTop: 16,
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
+                    gap: 9,
+                    marginBottom: 10,
+                    fontSize: 13,
+                    color: "#2a2825",
                   }}
                 >
-                  <UserPlus size={15} />
-                  {p.popular ? "Start Pro Free Trial" : "Create Free Account"}
-                </button>
+                  <span style={{ color: "#16a34a" }}>✓</span> {f}
+                </div>
+              ))}
+              {[
+                "PDF tax reports",
+                "AI split suggestions",
+                "4-way splitting",
+              ].map((f) => (
+                <div
+                  key={f}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 9,
+                    marginBottom: 10,
+                    fontSize: 13,
+                    color: "#ccc",
+                    textDecoration: "line-through",
+                  }}
+                >
+                  <span style={{ color: "#d1d5db" }}>✗</span> {f}
+                </div>
+              ))}
+              <button
+                onClick={() => openModal("free")}
+                style={{
+                  width: "100%",
+                  padding: 13,
+                  borderRadius: 13,
+                  border: "2px solid #e8e4de",
+                  background: "transparent",
+                  color: "#6b6460",
+                  fontFamily: "'DM Sans',sans-serif",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  marginTop: 20,
+                }}
+              >
+                Create Free Account
+              </button>
+            </div>
+            {/* Pro Featured */}
+            <div
+              className="lp-price"
+              style={{
+                background: "linear-gradient(145deg,#fff,#fff7ed)",
+                border: "2px solid #f97316",
+                borderRadius: 24,
+                padding: 32,
+                transition: "all .25s",
+                position: "relative",
+                boxShadow:
+                  "0 12px 40px rgba(249,115,22,.18), 0 0 0 4px rgba(249,115,22,.08)",
+                transform: isMobile ? "none" : "translateY(-8px)",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  top: -13,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  background: "#f97316",
+                  color: "#fff",
+                  fontSize: 10,
+                  fontWeight: 800,
+                  padding: "4px 16px",
+                  borderRadius: 20,
+                  whiteSpace: "nowrap",
+                  boxShadow: "0 4px 12px rgba(249,115,22,.4)",
+                }}
+              >
+                🔥 7-DAY PROMO PRICE
+              </div>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  textTransform: "uppercase",
+                  letterSpacing: ".1em",
+                  color: "#f97316",
+                  marginBottom: 10,
+                }}
+              >
+                Pro
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "baseline",
+                  gap: 10,
+                  marginBottom: 4,
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: "'Playfair Display',serif",
+                    fontSize: 42,
+                    letterSpacing: "-0.03em",
+                    lineHeight: 1,
+                    color: "#f97316",
+                  }}
+                >
+                  ₱150
+                </div>
+                <div
+                  style={{
+                    fontSize: 14,
+                    color: "#aaa",
+                    textDecoration: "line-through",
+                  }}
+                >
+                  ₱500
+                </div>
+              </div>
+              <div style={{ fontSize: 13, color: "#6b6460", marginBottom: 24 }}>
+                first 7 days · then ₱500/mo · cancel anytime
+              </div>
+              <div
+                style={{ height: 1, background: "#e8e4de", marginBottom: 20 }}
+              />
+              {[
+                "Unlimited expenses",
+                "Unlimited projects",
+                "4-way Smart Split",
+                "PDF BIR-ready reports",
+                "AI split suggestions",
+                "Receipt uploads (coming soon)",
+                "Priority support",
+                "Founding member pricing 🔒",
+              ].map((f) => (
+                <div
+                  key={f}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 9,
+                    marginBottom: 10,
+                    fontSize: 13,
+                    color: "#2a2825",
+                  }}
+                >
+                  <span style={{ color: "#16a34a" }}>✓</span> {f}
+                </div>
+              ))}
+              <button
+                onClick={() => openModal("promo")}
+                style={{
+                  width: "100%",
+                  padding: 13,
+                  borderRadius: 13,
+                  border: "none",
+                  background: "#f97316",
+                  color: "#fff",
+                  fontFamily: "'DM Sans',sans-serif",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  boxShadow: "0 6px 20px rgba(249,115,22,.4)",
+                  marginTop: 20,
+                }}
+              >
+                🔥 Claim ₱150 Promo Deal
+              </button>
+            </div>
+            {/* Pro Monthly */}
+            <div
+              className="lp-price"
+              style={{
+                background: "#fff",
+                border: "1.5px solid #e8e4de",
+                borderRadius: 24,
+                padding: 32,
+                transition: "all .25s",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  textTransform: "uppercase",
+                  letterSpacing: ".1em",
+                  color: "#6b6460",
+                  marginBottom: 10,
+                }}
+              >
+                Pro Monthly
+              </div>
+              <div
+                style={{
+                  fontFamily: "'Playfair Display',serif",
+                  fontSize: 42,
+                  letterSpacing: "-0.03em",
+                  lineHeight: 1,
+                  color: "#0f0e0d",
+                  marginBottom: 4,
+                }}
+              >
+                ₱500
+              </div>
+              <div style={{ fontSize: 13, color: "#6b6460", marginBottom: 24 }}>
+                per month · cancel anytime
+              </div>
+              <div
+                style={{ height: 1, background: "#e8e4de", marginBottom: 20 }}
+              />
+              {[
+                "Unlimited expenses",
+                "Unlimited projects",
+                "4-way Smart Split",
+                "PDF BIR-ready reports",
+                "AI split suggestions",
+                "Receipt uploads (coming soon)",
+                "Priority support",
+              ].map((f) => (
+                <div
+                  key={f}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 9,
+                    marginBottom: 10,
+                    fontSize: 13,
+                    color: "#2a2825",
+                  }}
+                >
+                  <span style={{ color: "#16a34a" }}>✓</span> {f}
+                </div>
+              ))}
+              <button
+                onClick={() => openModal("pro")}
+                style={{
+                  width: "100%",
+                  padding: 13,
+                  borderRadius: 13,
+                  border: "none",
+                  background: "#0f0e0d",
+                  color: "#fff",
+                  fontFamily: "'DM Sans',sans-serif",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  marginTop: 20,
+                }}
+              >
+                Get Pro — ₱500/mo
+              </button>
+            </div>
+          </div>
+
+          {/* Guarantee */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 14,
+              background: "#fff",
+              border: "1.5px solid rgba(22,163,74,.2)",
+              borderRadius: 16,
+              padding: "18px 28px",
+              marginTop: 28,
+              flexWrap: "wrap",
+            }}
+          >
+            <span style={{ fontSize: 28 }}>🛡️</span>
+            <div>
+              <p style={{ fontWeight: 700, fontSize: 14, color: "#16a34a" }}>
+                30-Day Money-Back Guarantee
+              </p>
+              <p style={{ fontSize: 12, color: "#6b6460", marginTop: 2 }}>
+                Try Pro for a full month. If it doesn't save you more than ₱500
+                in time or tax clarity, we'll refund you — no questions asked.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ ── */}
+      <section
+        style={{
+          background: "#fff",
+          padding: isMobile ? "72px 16px" : "100px 24px",
+        }}
+      >
+        <div style={{ maxWidth: 1040, margin: "0 auto" }}>
+          <p
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: "#f97316",
+              textTransform: "uppercase",
+              letterSpacing: ".1em",
+              marginBottom: 14,
+              textAlign: "center",
+            }}
+          >
+            FAQ
+          </p>
+          <h2
+            style={{
+              fontFamily: "'Playfair Display',serif",
+              fontSize: isMobile
+                ? "clamp(26px,6vw,40px)"
+                : "clamp(26px,4.5vw,52px)",
+              lineHeight: 1.05,
+              letterSpacing: "-0.03em",
+              marginBottom: 48,
+              textAlign: "center",
+            }}
+          >
+            Questions
+            <br />
+            <span style={{ color: "#f97316", fontStyle: "italic" }}>
+              answered honestly.
+            </span>
+          </h2>
+          <div style={{ maxWidth: 720, margin: "0 auto" }}>
+            {faqs.map((f, i) => (
+              <div
+                key={i}
+                style={{
+                  borderBottom: "1px solid #e8e4de",
+                  padding: "22px 0",
+                  cursor: "pointer",
+                }}
+                onClick={() => setFaqOpen(faqOpen === i ? null : i)}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    fontWeight: 700,
+                    fontSize: 15,
+                    gap: 16,
+                  }}
+                >
+                  {f.q}
+                  <span
+                    style={{
+                      color: "#f97316",
+                      fontSize: 20,
+                      transition: "transform .2s",
+                      transform: faqOpen === i ? "rotate(45deg)" : "none",
+                      flexShrink: 0,
+                    }}
+                  >
+                    +
+                  </span>
+                </div>
+                {faqOpen === i && (
+                  <p
+                    style={{
+                      fontSize: 13.5,
+                      color: "#6b6460",
+                      lineHeight: 1.8,
+                      marginTop: 12,
+                    }}
+                  >
+                    {f.a}
+                  </p>
+                )}
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA */}
+      {/* ── FINAL CTA ── */}
       <section
         style={{
-          background: "#f97316",
-          padding: isMobile ? "64px 16px" : "88px 24px",
+          background: "#0f0e0d",
+          padding: isMobile ? "80px 16px" : "120px 24px",
           textAlign: "center",
+          position: "relative",
+          overflow: "hidden",
         }}
       >
-        <h2
+        <div
           style={{
-            fontFamily: "'Playfair Display',serif",
-            fontSize: isMobile
-              ? "clamp(26px,7vw,44px)"
-              : "clamp(28px,4vw,52px)",
-            lineHeight: 1.06,
-            color: "#fff",
-            marginBottom: 14,
-            letterSpacing: "-0.03em",
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            background:
+              "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(249,115,22,.12) 0%, transparent 65%)",
+          }}
+        />
+        <div
+          style={{
+            maxWidth: 1040,
+            margin: "0 auto",
+            position: "relative",
+            zIndex: 1,
           }}
         >
-          Ready to stop guessing
-          <br />
-          at quarter-end?
-        </h2>
-        <p
-          style={{
-            fontSize: 15,
-            color: "rgba(255,255,255,.75)",
-            marginBottom: 32,
-          }}
-        >
-          Create your free account. Add your first project in 30 seconds.
-        </p>
-        <button
-          onClick={onRegister}
-          style={{
-            background: "#0a0a0a",
-            color: "#fff",
-            border: "none",
-            borderRadius: 13,
-            padding: "15px 36px",
-            fontSize: 16,
-            fontWeight: 800,
-            cursor: "pointer",
-            fontFamily: "inherit",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          <UserPlus size={16} /> Get Started Free
-        </button>
+          <h2
+            style={{
+              fontFamily: "'Playfair Display',serif",
+              fontSize: isMobile
+                ? "clamp(26px,7vw,44px)"
+                : "clamp(26px,4.5vw,52px)",
+              lineHeight: 1.05,
+              letterSpacing: "-0.03em",
+              color: "#fff",
+              marginBottom: 16,
+            }}
+          >
+            Ready to stop guessing
+            <br />
+            <span style={{ color: "#f97316", fontStyle: "italic" }}>
+              at quarter-end?
+            </span>
+          </h2>
+          <p
+            style={{
+              color: "#666",
+              fontSize: 16,
+              marginBottom: 40,
+              maxWidth: 460,
+              marginLeft: "auto",
+              marginRight: "auto",
+              lineHeight: 1.75,
+            }}
+          >
+            Create your free account now. Add your first project in 30 seconds.
+            The founding rate won't last.
+          </p>
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              flexWrap: "wrap",
+              justifyContent: "center",
+            }}
+          >
+            <button
+              onClick={() => openModal("promo")}
+              style={{
+                background: "#f97316",
+                color: "#fff",
+                border: "none",
+                borderRadius: 14,
+                padding: "17px 38px",
+                fontFamily: "'DM Sans',sans-serif",
+                fontSize: 17,
+                fontWeight: 700,
+                cursor: "pointer",
+                boxShadow: "0 8px 28px rgba(249,115,22,.4)",
+              }}
+            >
+              🔥 Claim ₱150 Promo — 7 Days Left
+            </button>
+            <button
+              onClick={() => openModal("free")}
+              style={{
+                background: "rgba(255,255,255,.07)",
+                color: "#aaa",
+                border: "1.5px solid rgba(255,255,255,.15)",
+                borderRadius: 14,
+                padding: "16px 28px",
+                fontFamily: "'DM Sans',sans-serif",
+                fontSize: 16,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Start Free
+            </button>
+          </div>
+        </div>
       </section>
 
-      {/* FOOTER */}
+      {/* ── FOOTER ── */}
       <footer
         style={{
-          background: "#060606",
-          padding: "24px 16px",
+          background: "#0f0e0d",
+          color: "#444",
+          padding: "28px 32px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          borderTop: "1px solid #1a1a1a",
           flexWrap: "wrap",
           gap: 12,
-          borderTop: "1px solid rgba(255,255,255,.05)",
+          fontSize: 12,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1687,7 +2528,7 @@ function LandingPage({ onLogin, onRegister }) {
           <span
             style={{
               fontFamily: "'Playfair Display',serif",
-              fontSize: 14,
+              fontSize: 13,
               color: "#444",
             }}
           >
@@ -1704,11 +2545,23 @@ function LandingPage({ onLogin, onRegister }) {
         >
           Built for Filipino Freelancers · 2025
         </p>
+        <button
+          onClick={onLogin}
+          style={{
+            background: "none",
+            border: "none",
+            color: "#444",
+            cursor: "pointer",
+            fontFamily: "inherit",
+            fontSize: 12,
+          }}
+        >
+          Log In →
+        </button>
       </footer>
     </div>
   );
 }
-
 // ── AUTH PAGE ───────────────────────────────────────────────────────────────
 function AuthPage({ mode, onSuccess, onSwitch, onBack }) {
   const [email, setEmail] = useState("");
