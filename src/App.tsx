@@ -60,38 +60,11 @@ import {
   User,
 } from "lucide-react";
 
-// ── SUPABASE ──────────────────────────────────────────────────────────────────
 const SUPABASE_URL = "https://kftkfpzwxsxqotadaxru.supabase.co";
 const SUPABASE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmdGtmcHp3eHN4cW90YWRheHJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1NTYxNDcsImV4cCI6MjA4OTEzMjE0N30.LF_51Ic1IkazL4dL5HRKKak1WPyfg4EG1VvzYa9V-Jw";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-/*
- * ── SUPABASE SQL (run once in SQL Editor) ────────────────────────────────────
- *
- * -- Add user_id to projects and expenses so data is private per account
- *
- * alter table projects add column if not exists user_id uuid references auth.users(id) on delete cascade;
- * alter table expenses add column if not exists user_id uuid references auth.users(id) on delete cascade;
- *
- * -- Drop old "allow all" policies and replace with per-user RLS
- * drop policy if exists "allow all" on projects;
- * drop policy if exists "allow all" on expenses;
- * drop policy if exists "allow all" on expense_splits;
- *
- * create policy "own projects"       on projects       for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
- * create policy "own expenses"       on expenses       for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
- * create policy "own splits"         on expense_splits for all using (
- *   expense_id in (select id from expenses where user_id = auth.uid())
- * );
- *
- * -- Make sure RLS is enabled
- * alter table projects       enable row level security;
- * alter table expenses       enable row level security;
- * alter table expense_splits enable row level security;
- */
-
-// ── CONSTANTS ─────────────────────────────────────────────────────────────────
 const CATEGORIES = [
   "Meals",
   "Transport",
@@ -137,7 +110,6 @@ const PALETTE = [
 const FREE_EXP = 50;
 const FREE_PROJ = 3;
 
-// ── HELPERS ───────────────────────────────────────────────────────────────────
 const fmt = (n) =>
   "₱" + Number(n).toLocaleString("en-PH", { minimumFractionDigits: 0 });
 const pClr = (projects, pid) =>
@@ -145,6 +117,7 @@ const pClr = (projects, pid) =>
 const pNm = (projects, pid) =>
   projects.find((p) => p.id === pid)?.name || "Unknown";
 
+// ── BREAKPOINT ─────────────────────────────────────────────────────────────
 function useBreakpoint() {
   const [w, setW] = useState(
     typeof window !== "undefined" ? window.innerWidth : 1024
@@ -154,7 +127,11 @@ function useBreakpoint() {
     window.addEventListener("resize", h);
     return () => window.removeEventListener("resize", h);
   }, []);
-  return { isMobile: w < 640, isTablet: w >= 640 && w < 1024 };
+  return {
+    isMobile: w < 640,
+    isTablet: w >= 640 && w < 1024,
+    isXSmall: w < 380, // NEW — very narrow phones
+  };
 }
 
 function useLS(key, def) {
@@ -174,11 +151,10 @@ function useLS(key, def) {
   return [val, setVal];
 }
 
-// ── SUPABASE AUTH HOOK ────────────────────────────────────────────────────────
+// ── AUTH ───────────────────────────────────────────────────────────────────
 function useAuth() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -191,7 +167,6 @@ function useAuth() {
     });
     return () => subscription.unsubscribe();
   }, []);
-
   const signUp = async (email, password) => {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
@@ -208,11 +183,10 @@ function useAuth() {
   const signOut = async () => {
     await supabase.auth.signOut();
   };
-
   return { user, authLoading, signUp, signIn, signOut };
 }
 
-// ── SUPABASE DATA HOOK (user-scoped) ─────────────────────────────────────────
+// ── DATA ───────────────────────────────────────────────────────────────────
 function useData(userId) {
   const [expenses, setExpenses] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -347,7 +321,6 @@ function useData(userId) {
     if (error) throw error;
     setExpenses((p) => p.filter((e) => e.id !== id));
   };
-
   return {
     expenses,
     projects,
@@ -361,7 +334,7 @@ function useData(userId) {
   };
 }
 
-// ── CHARTS ────────────────────────────────────────────────────────────────────
+// ── CHARTS ─────────────────────────────────────────────────────────────────
 function DonutChart({ segments, size = 88 }) {
   const r = 28,
     cx = 40,
@@ -398,51 +371,6 @@ function DonutChart({ segments, size = 88 }) {
         );
       })}
     </svg>
-  );
-}
-function MiniBar({ data }) {
-  const max = Math.max(...data.map((d) => d.val), 1);
-  return (
-    <div
-      style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 64 }}
-    >
-      {data.map((d, i) => (
-        <div
-          key={i}
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 2,
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              height: 52,
-              display: "flex",
-              alignItems: "flex-end",
-              borderRadius: "3px 3px 0 0",
-              overflow: "hidden",
-              background: "rgba(255,255,255,0.04)",
-            }}
-          >
-            <div
-              style={{
-                width: "100%",
-                background: d.highlight ? "#f97316" : "#3b82f6",
-                height: `${(d.val / max) * 100}%`,
-                transition: "height .6s ease",
-              }}
-            />
-          </div>
-          <span style={{ fontSize: 8, color: "#555", fontWeight: 700 }}>
-            {d.label}
-          </span>
-        </div>
-      ))}
-    </div>
   );
 }
 function SplitBar({ splits, projects }) {
@@ -485,7 +413,7 @@ function Toast({ msg, type }) {
     <div
       style={{
         position: "fixed",
-        bottom: 28,
+        bottom: 96,
         left: "50%",
         transform: "translateX(-50%)",
         background: bg,
@@ -510,7 +438,7 @@ function Toast({ msg, type }) {
   );
 }
 
-// ── LANDING PAGE ──────────────────────────────────────────────────────────────
+// ── LANDING PAGE ────────────────────────────────────────────────────────────
 function LandingPage({ onLogin, onRegister }) {
   const { isMobile, isTablet } = useBreakpoint();
   const [scrolled, setScrolled] = useState(false);
@@ -525,7 +453,7 @@ function LandingPage({ onLogin, onRegister }) {
   const css = `
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html,body{overflow-x:hidden;scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
+    html,body{overflow-x:hidden;scroll-behavior:smooth;-webkit-font-smoothing:antialiased;max-width:100vw}
     @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
     @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
     @keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
@@ -587,11 +515,14 @@ function LandingPage({ onLogin, onRegister }) {
         minHeight: "100vh",
         fontFamily: "'Plus Jakarta Sans',sans-serif",
         overflowX: "hidden",
+        width: "100%",
+        maxWidth: "100vw",
       }}
     >
       <style>{css}</style>
 
-      {/* NAV */}
+      {/* ── NAV ── */}
+      {/* FIX 1: reduced padding, flex gap, logo overflow protection */}
       <nav
         style={{
           position: "fixed",
@@ -602,20 +533,22 @@ function LandingPage({ onLogin, onRegister }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: scrolled ? "12px 24px" : "20px 24px",
+          padding: scrolled ? "12px 16px" : "18px 16px", // FIXED: was 24px
           background: scrolled ? "rgba(10,10,10,.97)" : "transparent",
           backdropFilter: scrolled ? "blur(14px)" : "none",
           borderBottom: scrolled ? "1px solid rgba(255,255,255,.06)" : "none",
           transition: "all .3s",
-          gap: 12,
+          gap: 8,
+          minWidth: 0,
         }}
       >
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 9,
+            gap: 8,
             flexShrink: 0,
+            minWidth: 0,
           }}
         >
           <div
@@ -630,22 +563,37 @@ function LandingPage({ onLogin, onRegister }) {
               fontWeight: 900,
               color: "#fff",
               fontSize: 16,
+              flexShrink: 0,
             }}
           >
             ₣
           </div>
-          <span
+          {/* FIXED: hide text on very small screens to prevent overlap */}
+          {!isMobile && (
+            <span
+              style={{
+                fontFamily: "'Playfair Display',serif",
+                fontSize: 18,
+                color: "#fff",
+                whiteSpace: "nowrap",
+              }}
+            >
+              FreelanceFunds
+            </span>
+          )}
+        </div>
+
+        {/* Desktop nav links — only on non-mobile */}
+        {!isMobile && (
+          <div
             style={{
-              fontFamily: "'Playfair Display',serif",
-              fontSize: 18,
-              color: "#fff",
+              display: "flex",
+              gap: 24,
+              alignItems: "center",
+              flex: 1,
+              justifyContent: "center",
             }}
           >
-            FreelanceFunds
-          </span>
-        </div>
-        {!isMobile && (
-          <div style={{ display: "flex", gap: 28, alignItems: "center" }}>
             {[
               ["#features", "Features"],
               ["#how", "How It Works"],
@@ -659,6 +607,7 @@ function LandingPage({ onLogin, onRegister }) {
                   fontWeight: 600,
                   color: "#666",
                   transition: "color .2s",
+                  whiteSpace: "nowrap",
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#666")}
@@ -668,6 +617,7 @@ function LandingPage({ onLogin, onRegister }) {
             ))}
           </div>
         )}
+
         <div
           style={{
             display: "flex",
@@ -684,12 +634,13 @@ function LandingPage({ onLogin, onRegister }) {
                 border: "1.5px solid rgba(255,255,255,.15)",
                 color: "#ccc",
                 borderRadius: 9,
-                padding: "8px 18px",
+                padding: "8px 16px",
                 fontSize: 13,
                 fontWeight: 700,
                 cursor: "pointer",
                 fontFamily: "inherit",
                 transition: "all .2s",
+                whiteSpace: "nowrap",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = "rgba(255,255,255,.4)";
@@ -710,12 +661,13 @@ function LandingPage({ onLogin, onRegister }) {
               color: "#fff",
               border: "none",
               borderRadius: 9,
-              padding: "9px 20px",
+              padding: isMobile ? "8px 14px" : "9px 20px",
               fontSize: 13,
               fontWeight: 700,
               cursor: "pointer",
               fontFamily: "inherit",
               transition: "background .2s",
+              whiteSpace: "nowrap",
             }}
             onMouseEnter={(e) => (e.currentTarget.style.background = "#ea6c0a")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "#f97316")}
@@ -737,6 +689,7 @@ function LandingPage({ onLogin, onRegister }) {
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: 16,
+                flexShrink: 0,
               }}
             >
               {navOpen ? <X size={16} /> : "☰"}
@@ -851,7 +804,7 @@ function LandingPage({ onLogin, onRegister }) {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          padding: isMobile ? "100px 20px 60px" : "120px 24px 80px",
+          padding: isMobile ? "100px 16px 60px" : "120px 24px 80px",
           textAlign: "center",
           position: "relative",
           overflow: "hidden",
@@ -918,6 +871,7 @@ function LandingPage({ onLogin, onRegister }) {
             maxWidth: 520,
             lineHeight: 1.85,
             marginBottom: 36,
+            padding: "0 8px",
           }}
         >
           Track expenses across multiple clients, split costs automatically, and
@@ -982,7 +936,7 @@ function LandingPage({ onLogin, onRegister }) {
           </button>
         </div>
 
-        {/* Mock dashboard preview */}
+        {/* Mock dashboard */}
         <div
           className="bob"
           style={{
@@ -1031,7 +985,7 @@ function LandingPage({ onLogin, onRegister }) {
               freelancefunds — Dashboard
             </div>
           </div>
-          <div style={{ padding: 20 }}>
+          <div style={{ padding: isMobile ? 14 : 20 }}>
             <div
               style={{
                 display: "grid",
@@ -1050,12 +1004,12 @@ function LandingPage({ onLogin, onRegister }) {
                   style={{
                     background: "#1a1a1a",
                     borderRadius: 10,
-                    padding: "10px 12px",
+                    padding: "10px 8px",
                   }}
                 >
                   <div
                     style={{
-                      fontSize: 8,
+                      fontSize: 7,
                       color: "#444",
                       fontWeight: 700,
                       textTransform: "uppercase",
@@ -1068,7 +1022,7 @@ function LandingPage({ onLogin, onRegister }) {
                   <div
                     style={{
                       fontFamily: "'Playfair Display',serif",
-                      fontSize: 16,
+                      fontSize: isMobile ? 13 : 16,
                       color: c,
                     }}
                   >
@@ -1117,7 +1071,13 @@ function LandingPage({ onLogin, onRegister }) {
                   }}
                 >
                   <div
-                    style={{ display: "flex", alignItems: "center", gap: 10 }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      flex: 1,
+                      minWidth: 0,
+                    }}
                   >
                     <div
                       style={{
@@ -1129,13 +1089,21 @@ function LandingPage({ onLogin, onRegister }) {
                         alignItems: "center",
                         justifyContent: "center",
                         color: r.clr,
+                        flexShrink: 0,
                       }}
                     >
                       <RIc size={14} />
                     </div>
-                    <div>
+                    <div style={{ minWidth: 0 }}>
                       <div
-                        style={{ fontSize: 12, fontWeight: 600, color: "#ccc" }}
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: "#ccc",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
                       >
                         {r.nm}
                       </div>
@@ -1158,7 +1126,15 @@ function LandingPage({ onLogin, onRegister }) {
                       </div>
                     </div>
                   </div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: "#fff",
+                      flexShrink: 0,
+                      marginLeft: 8,
+                    }}
+                  >
                     {r.a}
                   </div>
                 </div>
@@ -1181,15 +1157,13 @@ function LandingPage({ onLogin, onRegister }) {
         <div className="mq">
           {[...Array(2)].flatMap(() =>
             [
-              ["Monitor", "Adobe CC", "split 60/40"],
-              ["Utensils", "Client meals", "auto-allocated"],
-              ["FileText", "BIR reports", "one click"],
-              ["Smartphone", "Phone bills", "split by hours"],
-              ["Car", "Grab rides", "per project"],
-              ["Megaphone", "Facebook Ads", "by budget share"],
-              ["Clock", "10 hrs saved", "every month"],
-              ["Shield", "₱18,000", "avg annual savings"],
-            ].map(([, l, a], i) => (
+              ["Adobe CC", "split 60/40"],
+              ["Client meals", "auto-allocated"],
+              ["BIR reports", "one click"],
+              ["Phone bills", "split by hours"],
+              ["Grab rides", "per project"],
+              ["₱18,000", "avg annual savings"],
+            ].map(([l, a], i) => (
               <div
                 key={i}
                 style={{
@@ -1216,7 +1190,7 @@ function LandingPage({ onLogin, onRegister }) {
       <section
         id="features"
         style={{
-          padding: isMobile ? "72px 20px" : "100px 24px",
+          padding: isMobile ? "72px 16px" : "100px 24px",
           background: "#0a0a0a",
         }}
       >
@@ -1304,7 +1278,7 @@ function LandingPage({ onLogin, onRegister }) {
       <section
         id="how"
         style={{
-          padding: isMobile ? "72px 20px" : "100px 24px",
+          padding: isMobile ? "72px 16px" : "100px 24px",
           background: "#060606",
           borderTop: "1px solid rgba(255,255,255,.05)",
         }}
@@ -1425,7 +1399,7 @@ function LandingPage({ onLogin, onRegister }) {
       <section
         id="pricing"
         style={{
-          padding: isMobile ? "72px 20px" : "100px 24px",
+          padding: isMobile ? "72px 16px" : "100px 24px",
           background: "#0a0a0a",
         }}
       >
@@ -1617,7 +1591,7 @@ function LandingPage({ onLogin, onRegister }) {
                     gap: 8,
                   }}
                 >
-                  <UserPlus size={15} />{" "}
+                  <UserPlus size={15} />
                   {p.popular ? "Start Pro Free Trial" : "Create Free Account"}
                 </button>
               </div>
@@ -1630,7 +1604,7 @@ function LandingPage({ onLogin, onRegister }) {
       <section
         style={{
           background: "#f97316",
-          padding: isMobile ? "64px 20px" : "88px 24px",
+          padding: isMobile ? "64px 16px" : "88px 24px",
           textAlign: "center",
         }}
       >
@@ -1684,7 +1658,7 @@ function LandingPage({ onLogin, onRegister }) {
       <footer
         style={{
           background: "#060606",
-          padding: "24px 24px",
+          padding: "24px 16px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -1735,14 +1709,14 @@ function LandingPage({ onLogin, onRegister }) {
   );
 }
 
-// ── AUTH PAGE (Login / Register) ──────────────────────────────────────────────
+// ── AUTH PAGE ───────────────────────────────────────────────────────────────
 function AuthPage({ mode, onSuccess, onSwitch, onBack }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [done, setDone] = useState(false); // email confirm state
+  const [done, setDone] = useState(false);
   const { signUp, signIn } = useAuth();
   const isRegister = mode === "register";
 
@@ -1760,7 +1734,7 @@ function AuthPage({ mode, onSuccess, onSwitch, onBack }) {
     try {
       if (isRegister) {
         await signUp(email.trim(), password);
-        setDone(true); // Supabase sends a confirmation email
+        setDone(true);
       } else {
         await signIn(email.trim(), password);
         onSuccess();
@@ -1775,6 +1749,7 @@ function AuthPage({ mode, onSuccess, onSwitch, onBack }) {
   const css = `
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{overflow-x:hidden;max-width:100vw}
     @keyframes scaleIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
     @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
     .auth-card{animation:scaleIn .3s ease both}
@@ -1793,8 +1768,6 @@ function AuthPage({ mode, onSuccess, onSwitch, onBack }) {
       }}
     >
       <style>{css}</style>
-
-      {/* Back to landing */}
       <button
         onClick={onBack}
         style={{
@@ -1817,7 +1790,6 @@ function AuthPage({ mode, onSuccess, onSwitch, onBack }) {
       >
         <ChevronLeft size={13} /> Back
       </button>
-
       <div
         className="auth-card"
         style={{
@@ -1829,8 +1801,7 @@ function AuthPage({ mode, onSuccess, onSwitch, onBack }) {
           overflow: "hidden",
         }}
       >
-        {/* Header */}
-        <div style={{ padding: "28px 28px 0", textAlign: "center" }}>
+        <div style={{ padding: "28px 24px 0", textAlign: "center" }}>
           <div
             style={{
               width: 48,
@@ -1870,9 +1841,8 @@ function AuthPage({ mode, onSuccess, onSwitch, onBack }) {
               : "Log in to access your expenses and reports."}
           </p>
         </div>
-
         {done ? (
-          <div style={{ padding: "0 28px 28px", textAlign: "center" }}>
+          <div style={{ padding: "0 24px 28px", textAlign: "center" }}>
             <div
               style={{
                 width: 56,
@@ -1924,13 +1894,12 @@ function AuthPage({ mode, onSuccess, onSwitch, onBack }) {
         ) : (
           <div
             style={{
-              padding: "0 28px 28px",
+              padding: "0 24px 28px",
               display: "flex",
               flexDirection: "column",
               gap: 14,
             }}
           >
-            {/* Email */}
             <div>
               <label
                 style={{
@@ -1983,8 +1952,6 @@ function AuthPage({ mode, onSuccess, onSwitch, onBack }) {
                 />
               </div>
             </div>
-
-            {/* Password */}
             <div>
               <label
                 style={{
@@ -2065,8 +2032,6 @@ function AuthPage({ mode, onSuccess, onSwitch, onBack }) {
                 </button>
               </div>
             </div>
-
-            {/* Error */}
             {error && (
               <div
                 style={{
@@ -2087,8 +2052,6 @@ function AuthPage({ mode, onSuccess, onSwitch, onBack }) {
                 </span>
               </div>
             )}
-
-            {/* Submit */}
             <button
               onClick={handleSubmit}
               disabled={loading}
@@ -2097,7 +2060,7 @@ function AuthPage({ mode, onSuccess, onSwitch, onBack }) {
                 color: "#fff",
                 border: "none",
                 borderRadius: 12,
-                padding: "13px",
+                padding: 13,
                 fontSize: 15,
                 fontWeight: 800,
                 cursor: loading ? "not-allowed" : "pointer",
@@ -2115,21 +2078,21 @@ function AuthPage({ mode, onSuccess, onSwitch, onBack }) {
                   <RefreshCw
                     size={15}
                     style={{ animation: "spin .8s linear infinite" }}
-                  />{" "}
+                  />
                   {isRegister ? "Creating account..." : "Logging in..."}
                 </>
               ) : isRegister ? (
                 <>
-                  <UserPlus size={15} /> Create Account
+                  <UserPlus size={15} />
+                  Create Account
                 </>
               ) : (
                 <>
-                  <LogIn size={15} /> Log In
+                  <LogIn size={15} />
+                  Log In
                 </>
               )}
             </button>
-
-            {/* Switch */}
             <p style={{ textAlign: "center", fontSize: 13, color: "#444" }}>
               {isRegister ? "Already have an account? " : "No account yet? "}
               <button
@@ -2154,7 +2117,7 @@ function AuthPage({ mode, onSuccess, onSwitch, onBack }) {
   );
 }
 
-// ── UPGRADE NUDGE ─────────────────────────────────────────────────────────────
+// ── UPGRADE NUDGE ───────────────────────────────────────────────────────────
 function UpgradeNudge({ feature, onUpgrade, D, brd }) {
   return (
     <div
@@ -2225,7 +2188,7 @@ function UpgradeNudge({ feature, onUpgrade, D, brd }) {
   );
 }
 
-// ── USER MANUAL ───────────────────────────────────────────────────────────────
+// ── USER MANUAL ─────────────────────────────────────────────────────────────
 const MANUAL_STEPS = [
   {
     Icon: FolderOpen,
@@ -2265,6 +2228,7 @@ const MANUAL_STEPS = [
 ];
 
 function UserManual({ onClose, tk }) {
+  const { isMobile } = useBreakpoint();
   const [step, setStep] = useState(0);
   const cur = MANUAL_STEPS[step];
   const Ic = cur.Icon;
@@ -2531,7 +2495,7 @@ function UserManual({ onClose, tk }) {
   );
 }
 
-// ── SHARE CARD ────────────────────────────────────────────────────────────────
+// ── SHARE CARD ──────────────────────────────────────────────────────────────
 function ShareCard({ grandTotal, estSavings, projects, onClose, tk }) {
   const [copied, setCopied] = useState(false);
   const text = `I tracked ${fmt(
@@ -2633,11 +2597,13 @@ function ShareCard({ grandTotal, estSavings, projects, onClose, tk }) {
             >
               {copied ? (
                 <>
-                  <CheckCircle2 size={13} /> Copied!
+                  <CheckCircle2 size={13} />
+                  Copied!
                 </>
               ) : (
                 <>
-                  <Share2 size={13} /> Copy to share
+                  <Share2 size={13} />
+                  Copy to share
                 </>
               )}
             </button>
@@ -2664,7 +2630,7 @@ function ShareCard({ grandTotal, estSavings, projects, onClose, tk }) {
   );
 }
 
-// ── MAIN APP ──────────────────────────────────────────────────────────────────
+// ── MAIN APP ────────────────────────────────────────────────────────────────
 function FreelanceFundsApp({ user, signOut }) {
   const {
     expenses,
@@ -2678,7 +2644,6 @@ function FreelanceFundsApp({ user, signOut }) {
     removeExpense,
   } = useData(user.id);
   const [dark, setDark] = useLS("ff_dark", true);
-  const [seenOb, setSeenOb] = useLS(`ff_ob_${user.id}`, false);
   const [plan, setPlan] = useLS(`ff_plan_${user.id}`, "free");
   const [tab, setTab] = useState("dashboard");
   const [modal, setModal] = useState(null);
@@ -2694,7 +2659,7 @@ function FreelanceFundsApp({ user, signOut }) {
   const [showShare, setShowShare] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const { isMobile, isTablet } = useBreakpoint();
+  const { isMobile, isTablet, isXSmall } = useBreakpoint();
   const isSmall = isMobile || isTablet;
   const isPro = plan === "pro";
   const maxExp = isPro ? Infinity : FREE_EXP;
@@ -2740,8 +2705,8 @@ function FreelanceFundsApp({ user, signOut }) {
     catTotals[e.category] = (catTotals[e.category] || 0) + e.amount;
   });
   const monthly = (() => {
-    const labs = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
-    const vals = Array(12).fill(0);
+    const labs = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"],
+      vals = Array(12).fill(0);
     expenses.forEach((e) => {
       vals[new Date(e.date).getMonth()] += e.amount;
     });
@@ -2934,8 +2899,6 @@ function FreelanceFundsApp({ user, signOut }) {
     @keyframes scaleIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
     @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
-    @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
-    @keyframes floatUp{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
     .fade-up{animation:fadeUp .4s cubic-bezier(.16,1,.3,1) both}
     .fade-up-1{animation:fadeUp .4s .05s cubic-bezier(.16,1,.3,1) both}
     .fade-up-2{animation:fadeUp .4s .1s cubic-bezier(.16,1,.3,1) both}
@@ -2963,13 +2926,11 @@ function FreelanceFundsApp({ user, signOut }) {
       D ? "rgba(249,115,22,.2)" : "rgba(249,115,22,.15)"
     };box-shadow:0 4px 24px rgba(0,0,0,${D ? 0.2 : 0.06})}
     .stat-card{background:${card};border-radius:16px;border:1px solid ${brd};padding:${
-    isMobile ? "14px" : "20px"
+    isMobile ? "12px" : "20px"
   };position:relative;overflow:hidden;transition:all .2s}
     .stat-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,${
       D ? 0.25 : 0.08
     })}
-    .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#f97316,#ea580c);opacity:0;transition:opacity .2s}
-    .stat-card:hover::before{opacity:1}
     .row{border-radius:14px;padding:14px 16px;border:1px solid ${
       D ? "#1e1e1e" : "#f0f0f0"
     };background:${card};transition:all .18s;cursor:pointer}
@@ -2978,18 +2939,34 @@ function FreelanceFundsApp({ user, signOut }) {
     };box-shadow:0 6px 20px rgba(0,0,0,${
     D ? 0.2 : 0.06
   });transform:translateY(-1px)}
-    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:600;padding:16px;backdrop-filter:blur(12px)}
-    .modal{background:${card};border-radius:24px;padding:24px;width:100%;max-width:520px;max-height:92vh;overflow-y:auto;border:1px solid ${brd};box-shadow:0 24px 60px rgba(0,0,0,.4)}
-    .tab-btn{background:none;border:none;cursor:pointer;padding:8px 14px;border-radius:9px;font-family:inherit;font-size:13px;font-weight:700;color:${muted};transition:all .15s;display:flex;align-items:center;gap:7px;white-space:nowrap}
+
+    /* FIX 6 — modal as bottom sheet on mobile */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:${
+      isMobile ? "flex-end" : "center"
+    };justify-content:center;z-index:600;padding:${
+    isMobile ? "0" : "16px"
+  };backdrop-filter:blur(12px)}
+    .modal{background:${card};border-radius:${
+    isMobile ? "22px 22px 0 0" : "24px"
+  };padding:${isMobile ? "20px 16px 32px" : "24px"};width:100%;max-width:${
+    isMobile ? "100%" : "520px"
+  };max-height:${
+    isMobile ? "92vh" : "92vh"
+  };overflow-y:auto;border:1px solid ${brd};box-shadow:0 24px 60px rgba(0,0,0,.4)}
+
+    .tab-btn{background:none;border:none;cursor:pointer;padding:8px 12px;border-radius:9px;font-family:inherit;font-size:13px;font-weight:700;color:${muted};transition:all .15s;display:flex;align-items:center;gap:7px;white-space:nowrap}
     .tab-btn:hover{color:${txt};background:${
     D ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.05)"
   }}
     .tab-btn.active{background:#f97316;color:#fff;box-shadow:0 2px 10px rgba(249,115,22,.35)}
-    .mob-tab{display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:8px 0 10px;font-family:inherit;font-size:9px;font-weight:800;color:${muted};transition:all .2s;flex:1;letter-spacing:.03em;text-transform:uppercase;position:relative}
+
+    /* FIX 5 — mobile bottom nav */
+    .mob-tab{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:6px 0 8px;font-family:inherit;font-size:9px;font-weight:800;color:${muted};transition:all .2s;flex:1;letter-spacing:.03em;text-transform:uppercase;position:relative}
     .mob-tab.active{color:#f97316}
-    .mob-tab.active::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:32px;height:2px;background:#f97316;border-radius:0 0 3px 3px}
-    .mob-tab-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;transition:all .2s;background:transparent}
+    .mob-tab.active::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:28px;height:2px;background:#f97316;border-radius:0 0 3px 3px}
+    .mob-tab-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;transition:all .2s;background:transparent}
     .mob-tab.active .mob-tab-icon{background:rgba(249,115,22,.12)}
+
     .prog{height:5px;background:${
       D ? "#1f1f1f" : "#f3f4f6"
     };border-radius:3px;overflow:hidden}
@@ -3011,8 +2988,12 @@ function FreelanceFundsApp({ user, signOut }) {
       D ? "#222" : "#f3f4f6"
     };margin-top:4px}
     .pulse{animation:pulse 2s ease-in-out infinite}
-    .glow-orange{box-shadow:0 0 0 1px rgba(249,115,22,.2),0 4px 20px rgba(249,115,22,.15)}
-    @media(max-width:480px){.modal{padding:16px;border-radius:20px}}
+
+    /* FIX 3 — prevent any child from blowing out horizontal layout */
+    @media(max-width:640px){
+      .modal{max-width:100%;border-radius:22px 22px 0 0}
+      input,select,textarea{font-size:16px!important} /* prevent iOS zoom */
+    }
   `;
 
   const navItems = [
@@ -3071,14 +3052,18 @@ function FreelanceFundsApp({ user, signOut }) {
     );
 
   return (
+    // FIX 3 — root div with proper overflow and width constraints
     <div
       style={{
         fontFamily: "'Plus Jakarta Sans',sans-serif",
         background: bg,
         minHeight: "100vh",
         color: txt,
-        paddingBottom: isMobile ? 72 : 0,
+        paddingBottom: isMobile ? 88 : 0,
         overflowX: "hidden",
+        width: "100%",
+        maxWidth: "100vw",
+        position: "relative",
       }}
     >
       <style>{css}</style>
@@ -3096,11 +3081,12 @@ function FreelanceFundsApp({ user, signOut }) {
         />
       )}
 
+      {/* Delete confirm */}
       {delId && (
         <div className="overlay">
           <div
             className="modal scale-in"
-            style={{ maxWidth: 320, textAlign: "center" }}
+            style={{ maxWidth: isMobile ? "100%" : 320, textAlign: "center" }}
           >
             <Trash2 size={36} color="#dc2626" style={{ marginBottom: 12 }} />
             <h3
@@ -3128,6 +3114,7 @@ function FreelanceFundsApp({ user, signOut }) {
         </div>
       )}
 
+      {/* Plan modal */}
       {showPlan && (
         <div
           className="overlay"
@@ -3162,82 +3149,6 @@ function FreelanceFundsApp({ user, signOut }) {
                 <X size={15} />
               </button>
             </div>
-            {!isPro && (
-              <div
-                style={{
-                  background: D ? "#111" : "#f9fafb",
-                  border: `1px solid ${brd}`,
-                  borderRadius: 12,
-                  padding: "14px 16px",
-                  marginBottom: 18,
-                }}
-              >
-                <p
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: txt,
-                    marginBottom: 10,
-                  }}
-                >
-                  Your current usage
-                </p>
-                {[
-                  {
-                    label: "Expenses",
-                    used: expenses.length,
-                    max: FREE_EXP,
-                    color: "#f97316",
-                  },
-                  {
-                    label: "Projects",
-                    used: projects.length,
-                    max: FREE_PROJ,
-                    color: "#3b82f6",
-                  },
-                ].map((u) => (
-                  <div key={u.label} style={{ marginBottom: 8 }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginBottom: 4,
-                      }}
-                    >
-                      <span style={{ fontSize: 11, color: muted }}>
-                        {u.label}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          color:
-                            Math.round((u.used / u.max) * 100) >= 70
-                              ? "#f97316"
-                              : txt,
-                        }}
-                      >
-                        {u.used}/{u.max}
-                      </span>
-                    </div>
-                    <div className="limit-bar">
-                      <div
-                        style={{
-                          height: "100%",
-                          background: u.color,
-                          width: `${Math.min(
-                            100,
-                            Math.round((u.used / u.max) * 100)
-                          )}%`,
-                          borderRadius: 2,
-                          transition: "width .5s",
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
             <div
               style={{
                 display: "grid",
@@ -3429,7 +3340,7 @@ function FreelanceFundsApp({ user, signOut }) {
         </div>
       )}
 
-      {/* HEADER */}
+      {/* ── HEADER ── */}
       <header
         style={{
           background: D ? "rgba(14,14,14,.92)" : card,
@@ -3444,6 +3355,8 @@ function FreelanceFundsApp({ user, signOut }) {
           zIndex: 200,
           gap: 8,
           backdropFilter: "blur(16px)",
+          width: "100%",
+          maxWidth: "100vw",
         }}
       >
         <div
@@ -3452,6 +3365,7 @@ function FreelanceFundsApp({ user, signOut }) {
             alignItems: "center",
             gap: 8,
             flexShrink: 0,
+            minWidth: 0,
           }}
         >
           <div
@@ -3466,6 +3380,7 @@ function FreelanceFundsApp({ user, signOut }) {
               fontWeight: 900,
               color: "#fff",
               fontSize: 15,
+              flexShrink: 0,
             }}
           >
             ₣
@@ -3476,6 +3391,7 @@ function FreelanceFundsApp({ user, signOut }) {
                 fontFamily: "'Playfair Display',serif",
                 fontSize: 17,
                 color: txt,
+                whiteSpace: "nowrap",
               }}
             >
               FreelanceFunds
@@ -3486,9 +3402,11 @@ function FreelanceFundsApp({ user, signOut }) {
           ) : (
             <span className="badge-free">FREE</span>
           )}
-          <span className="badge-db">
-            <Database size={9} /> Live
-          </span>
+          {!isMobile && (
+            <span className="badge-db">
+              <Database size={9} /> Live
+            </span>
+          )}
         </div>
         {!isSmall && (
           <nav
@@ -3497,6 +3415,7 @@ function FreelanceFundsApp({ user, signOut }) {
               gap: 2,
               flex: 1,
               justifyContent: "center",
+              overflow: "hidden",
             }}
           >
             {navItems.map(({ id, Icon, label }) => (
@@ -3505,7 +3424,8 @@ function FreelanceFundsApp({ user, signOut }) {
                 className={`tab-btn ${tab === id ? "active" : ""}`}
                 onClick={() => setTab(id)}
               >
-                <Icon size={14} /> {label}
+                <Icon size={14} />
+                {label}
               </button>
             ))}
           </nav>
@@ -3518,14 +3438,13 @@ function FreelanceFundsApp({ user, signOut }) {
             flexShrink: 0,
           }}
         >
-          {expenses.length > 0 && (
+          {expenses.length > 0 && !isMobile && (
             <button
               className="btn btn-share"
               style={{ padding: "7px 10px", fontSize: 12 }}
               onClick={() => setShowShare(true)}
             >
-              <Share2 size={14} />
-              {!isMobile && " Share"}
+              <Share2 size={14} /> Share
             </button>
           )}
           <button
@@ -3548,10 +3467,10 @@ function FreelanceFundsApp({ user, signOut }) {
               style={{ fontSize: 12, padding: "7px 12px" }}
               onClick={() => setShowPlan(true)}
             >
-              <Zap size={13} /> {nearLimit ? "Upgrade Now" : "Pro"}
+              <Zap size={13} />
+              {nearLimit ? "Upgrade Now" : "Pro"}
             </button>
           )}
-          {/* User menu */}
           {!isMobile && (
             <div
               style={{
@@ -3627,37 +3546,39 @@ function FreelanceFundsApp({ user, signOut }) {
         </div>
       </header>
 
-      {/* Usage bar */}
+      {/* FIX 2 — usage bar: simplified on mobile to avoid overflow */}
       {!isPro && (
         <div
           style={{
             background: D ? "#111" : "#fafafa",
             borderBottom: `1px solid ${brd}`,
-            padding: "6px 16px",
+            padding: "6px 12px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            gap: 12,
-            flexWrap: "wrap",
+            gap: 8,
+            flexWrap: "nowrap",
+            overflowX: "auto",
+            width: "100%",
           }}
         >
           <div
             style={{
               display: "flex",
-              gap: 16,
+              gap: isMobile ? 10 : 16,
               alignItems: "center",
-              flexWrap: "wrap",
+              flexShrink: 0,
             }}
           >
             {[
               {
-                label: "Expenses",
+                label: "Exp",
                 used: expenses.length,
                 max: FREE_EXP,
                 color: "#f97316",
               },
               {
-                label: "Projects",
+                label: "Proj",
                 used: projects.length,
                 max: FREE_PROJ,
                 color: "#3b82f6",
@@ -3665,9 +3586,13 @@ function FreelanceFundsApp({ user, signOut }) {
             ].map((u) => (
               <div
                 key={u.label}
-                style={{ display: "flex", alignItems: "center", gap: 6 }}
+                style={{ display: "flex", alignItems: "center", gap: 5 }}
               >
-                <span style={{ fontSize: 11, color: muted }}>{u.label}:</span>
+                <span
+                  style={{ fontSize: 11, color: muted, whiteSpace: "nowrap" }}
+                >
+                  {u.label}:
+                </span>
                 <span
                   style={{
                     fontSize: 11,
@@ -3676,11 +3601,12 @@ function FreelanceFundsApp({ user, signOut }) {
                       Math.round((u.used / u.max) * 100) >= 80
                         ? "#f97316"
                         : txt,
+                    whiteSpace: "nowrap",
                   }}
                 >
                   {u.used}/{u.max}
                 </span>
-                <div style={{ width: 40 }}>
+                <div style={{ width: 32 }}>
                   <div className="limit-bar">
                     <div
                       style={{
@@ -3697,18 +3623,25 @@ function FreelanceFundsApp({ user, signOut }) {
                 </div>
               </div>
             ))}
-            <span style={{ fontSize: 11, color: muted }}>2-way split only</span>
+            {!isMobile && (
+              <span
+                style={{ fontSize: 11, color: muted, whiteSpace: "nowrap" }}
+              >
+                2-way split only
+              </span>
+            )}
           </div>
           <button
             className="btn btn-pro"
-            style={{ fontSize: 11, padding: "4px 12px" }}
+            style={{ fontSize: 11, padding: "4px 10px", flexShrink: 0 }}
             onClick={() => setShowPlan(true)}
           >
-            <Zap size={11} /> Upgrade
+            <Zap size={11} /> Pro
           </button>
         </div>
       )}
 
+      {/* Tablet tab bar */}
       {isTablet && (
         <div
           style={{
@@ -3718,6 +3651,7 @@ function FreelanceFundsApp({ user, signOut }) {
             display: "flex",
             gap: 6,
             overflowX: "auto",
+            WebkitOverflowScrolling: "touch",
           }}
         >
           {navItems.map(({ id, Icon, label }) => (
@@ -3734,21 +3668,22 @@ function FreelanceFundsApp({ user, signOut }) {
         </div>
       )}
 
+      {/* ── MAIN CONTENT ── */}
       <main
         style={{
           maxWidth: 1040,
           margin: "0 auto",
           padding: isMobile
-            ? "16px 12px"
+            ? "14px 10px"
             : isTablet
             ? "20px 16px"
             : "28px 20px",
+          width: "100%",
         }}
       >
         {/* ── DASHBOARD ── */}
         {tab === "dashboard" && (
           <div>
-            {/* Page header */}
             <div
               className="fade-up"
               style={{
@@ -3794,7 +3729,7 @@ function FreelanceFundsApp({ user, signOut }) {
                   {isPro ? "Pro Plan" : "Free Plan"}
                 </p>
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button
                   className="btn btn-ghost"
                   style={{ fontSize: 12 }}
@@ -3809,15 +3744,6 @@ function FreelanceFundsApp({ user, signOut }) {
                     onClick={exportCSV}
                   >
                     <Download size={13} /> Export
-                  </button>
-                )}
-                {expenses.length > 0 && (
-                  <button
-                    className="btn btn-share"
-                    style={{ fontSize: 12 }}
-                    onClick={() => setShowShare(true)}
-                  >
-                    <Share2 size={13} /> Share
                   </button>
                 )}
               </div>
@@ -3835,7 +3761,7 @@ function FreelanceFundsApp({ user, signOut }) {
                     D ? "rgba(249,115,22,.3)" : "rgba(249,115,22,.25)"
                   }`,
                   borderRadius: 24,
-                  padding: "52px 32px",
+                  padding: isMobile ? "36px 20px" : "52px 32px",
                   textAlign: "center",
                   marginBottom: 20,
                 }}
@@ -3921,7 +3847,6 @@ function FreelanceFundsApp({ user, signOut }) {
               </div>
             )}
 
-            {/* Project created but no expenses nudge */}
             {projects.length > 0 && expenses.length === 0 && (
               <div
                 className="fade-up-1"
@@ -3933,7 +3858,7 @@ function FreelanceFundsApp({ user, signOut }) {
                     D ? "rgba(59,130,246,.2)" : "rgba(59,130,246,.25)"
                   }`,
                   borderRadius: 18,
-                  padding: "20px 24px",
+                  padding: "20px 20px",
                   marginBottom: 16,
                   display: "flex",
                   alignItems: "center",
@@ -3984,7 +3909,7 @@ function FreelanceFundsApp({ user, signOut }) {
 
             {expenses.length > 0 && (
               <>
-                {/* ── HERO STATS ── */}
+                {/* Hero stats */}
                 <div
                   className="fade-up-1"
                   style={{
@@ -3994,162 +3919,112 @@ function FreelanceFundsApp({ user, signOut }) {
                     marginBottom: 14,
                   }}
                 >
-                  {/* Total tracked */}
-                  <div
-                    style={{
-                      background: D
+                  {[
+                    {
+                      label: "Total Tracked",
+                      val: fmt(grandTotal),
+                      sub: `${expenses.length} expenses across ${
+                        projects.length
+                      } project${projects.length !== 1 ? "s" : ""}`,
+                      Icon: Wallet,
+                      accent: "#f97316",
+                      grad: D
                         ? "linear-gradient(135deg,#111,#1a0e00)"
                         : "linear-gradient(135deg,#fff,#fff7ed)",
-                      borderRadius: 22,
-                      padding: isMobile ? "20px 20px" : "24px 28px",
-                      position: "relative",
-                      overflow: "hidden",
-                      border: `1px solid ${
-                        D ? "rgba(249,115,22,.18)" : "rgba(249,115,22,.2)"
-                      }`,
-                      boxShadow: D
-                        ? "0 8px 32px rgba(0,0,0,.4)"
-                        : "0 4px 20px rgba(249,115,22,.1)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        position: "absolute",
-                        right: -30,
-                        top: -30,
-                        width: 140,
-                        height: 140,
-                        borderRadius: "50%",
-                        background: "rgba(249,115,22,.08)",
-                        pointerEvents: "none",
-                      }}
-                    />
-                    <div style={{ position: "absolute", right: 10, top: 10 }}>
-                      <div
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 10,
-                          background: "rgba(249,115,22,.12)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <Wallet size={16} color="#f97316" />
-                      </div>
-                    </div>
-                    <p
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 800,
-                        color: "#f97316",
-                        textTransform: "uppercase",
-                        letterSpacing: ".1em",
-                        marginBottom: 10,
-                      }}
-                    >
-                      Total Tracked
-                    </p>
-                    <p
-                      style={{
-                        fontFamily: "'Playfair Display',serif",
-                        fontSize: isMobile ? 34 : 42,
-                        lineHeight: 1,
-                        letterSpacing: "-0.03em",
-                        color: txt,
-                        marginBottom: 6,
-                      }}
-                    >
-                      {fmt(grandTotal)}
-                    </p>
-                    <p style={{ color: muted, fontSize: 12 }}>
-                      {expenses.length} expenses across {projects.length}{" "}
-                      project{projects.length !== 1 ? "s" : ""}
-                    </p>
-                  </div>
-
-                  {/* Tax savings */}
-                  <div
-                    style={{
-                      background: D
+                      border: D
+                        ? "rgba(249,115,22,.18)"
+                        : "rgba(249,115,22,.2)",
+                    },
+                    {
+                      label: "Est. Tax Savings",
+                      val: fmt(estSavings),
+                      sub: "at 20% deduction rate",
+                      Icon: Shield,
+                      accent: "#10b981",
+                      grad: D
                         ? "linear-gradient(135deg,#0a1a0f,#0d2015)"
                         : "linear-gradient(135deg,#f0fdf4,#dcfce7)",
-                      borderRadius: 22,
-                      padding: isMobile ? "20px 20px" : "24px 28px",
-                      position: "relative",
-                      overflow: "hidden",
-                      border: `1px solid ${
-                        D ? "rgba(16,185,129,.18)" : "rgba(16,185,129,.25)"
-                      }`,
-                      boxShadow: D
-                        ? "0 8px 32px rgba(0,0,0,.4)"
-                        : "0 4px 20px rgba(16,185,129,.1)",
-                    }}
-                  >
+                      border: D
+                        ? "rgba(16,185,129,.18)"
+                        : "rgba(16,185,129,.25)",
+                    },
+                  ].map((s) => (
                     <div
+                      key={s.label}
                       style={{
-                        position: "absolute",
-                        right: -30,
-                        top: -30,
-                        width: 140,
-                        height: 140,
-                        borderRadius: "50%",
-                        background: "rgba(16,185,129,.08)",
-                        pointerEvents: "none",
+                        background: s.grad,
+                        borderRadius: 22,
+                        padding: isMobile ? "18px 18px" : "24px 28px",
+                        position: "relative",
+                        overflow: "hidden",
+                        border: `1px solid ${s.border}`,
+                        boxShadow: D
+                          ? "0 8px 32px rgba(0,0,0,.4)"
+                          : "0 4px 20px rgba(0,0,0,.05)",
                       }}
-                    />
-                    <div style={{ position: "absolute", right: 10, top: 10 }}>
+                    >
                       <div
                         style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 10,
-                          background: "rgba(16,185,129,.12)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
+                          position: "absolute",
+                          right: -30,
+                          top: -30,
+                          width: 140,
+                          height: 140,
+                          borderRadius: "50%",
+                          background: `${s.accent}08`,
+                          pointerEvents: "none",
+                        }}
+                      />
+                      <div style={{ position: "absolute", right: 10, top: 10 }}>
+                        <div
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 10,
+                            background: `${s.accent}12`,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <s.Icon size={16} color={s.accent} />
+                        </div>
+                      </div>
+                      <p
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 800,
+                          color: s.accent,
+                          textTransform: "uppercase",
+                          letterSpacing: ".1em",
+                          marginBottom: 10,
                         }}
                       >
-                        <Shield size={16} color="#10b981" />
-                      </div>
+                        {s.label}
+                      </p>
+                      <p
+                        style={{
+                          fontFamily: "'Playfair Display',serif",
+                          fontSize: isMobile ? 30 : 42,
+                          lineHeight: 1,
+                          letterSpacing: "-0.03em",
+                          color: txt,
+                          marginBottom: 6,
+                        }}
+                      >
+                        {s.val}
+                      </p>
+                      <p style={{ color: muted, fontSize: 12 }}>{s.sub}</p>
                     </div>
-                    <p
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 800,
-                        color: "#10b981",
-                        textTransform: "uppercase",
-                        letterSpacing: ".1em",
-                        marginBottom: 10,
-                      }}
-                    >
-                      Est. Tax Savings
-                    </p>
-                    <p
-                      style={{
-                        fontFamily: "'Playfair Display',serif",
-                        fontSize: isMobile ? 34 : 42,
-                        lineHeight: 1,
-                        letterSpacing: "-0.03em",
-                        color: txt,
-                        marginBottom: 6,
-                      }}
-                    >
-                      {fmt(estSavings)}
-                    </p>
-                    <p style={{ color: muted, fontSize: 12 }}>
-                      at 20% deduction rate
-                    </p>
-                  </div>
+                  ))}
                 </div>
 
-                {/* ── MINI STATS ROW ── */}
+                {/* FIX 4 — mini stats: 2-col on xsmall, 3-col otherwise */}
                 <div
                   className="fade-up-2"
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(3,1fr)",
+                    gridTemplateColumns: isXSmall ? "1fr 1fr" : "repeat(3,1fr)",
                     gap: 10,
                     marginBottom: 14,
                   }}
@@ -4176,41 +4051,44 @@ function FreelanceFundsApp({ user, signOut }) {
                       Icon: Clock,
                       accent: "#3b82f6",
                     },
-                  ].map((s, i) => (
-                    <div key={i} className="stat-card">
-                      <div
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 9,
-                          background: `${s.accent}15`,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          marginBottom: 10,
-                        }}
-                      >
-                        <s.Icon size={15} color={s.accent} />
+                  ].map((s, i) =>
+                    // On xsmall, hide the 3rd stat to keep 2-col even
+                    isXSmall && i === 2 ? null : (
+                      <div key={i} className="stat-card">
+                        <div
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 9,
+                            background: `${s.accent}15`,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            marginBottom: 10,
+                          }}
+                        >
+                          <s.Icon size={15} color={s.accent} />
+                        </div>
+                        <p className="lbl" style={{ marginBottom: 4 }}>
+                          {s.label}
+                        </p>
+                        <p
+                          style={{
+                            fontFamily: "'Playfair Display',serif",
+                            fontSize: isMobile ? 14 : 18,
+                            color: txt,
+                            lineHeight: 1,
+                            letterSpacing: "-0.01em",
+                          }}
+                        >
+                          {s.val}
+                        </p>
                       </div>
-                      <p className="lbl" style={{ marginBottom: 4 }}>
-                        {s.label}
-                      </p>
-                      <p
-                        style={{
-                          fontFamily: "'Playfair Display',serif",
-                          fontSize: isMobile ? 15 : 18,
-                          color: txt,
-                          lineHeight: 1,
-                          letterSpacing: "-0.01em",
-                        }}
-                      >
-                        {s.val}
-                      </p>
-                    </div>
-                  ))}
+                    )
+                  )}
                 </div>
 
-                {/* ── CHARTS ROW ── */}
+                {/* Charts */}
                 <div
                   className="fade-up-2"
                   style={{
@@ -4220,8 +4098,7 @@ function FreelanceFundsApp({ user, signOut }) {
                     marginBottom: 14,
                   }}
                 >
-                  {/* Bar chart */}
-                  <div className="card" style={{ padding: isMobile ? 16 : 22 }}>
+                  <div className="card" style={{ padding: isMobile ? 14 : 22 }}>
                     <div
                       style={{
                         display: "flex",
@@ -4261,7 +4138,7 @@ function FreelanceFundsApp({ user, signOut }) {
                       style={{
                         display: "flex",
                         alignItems: "flex-end",
-                        gap: 4,
+                        gap: 3,
                         height: 72,
                       }}
                     >
@@ -4322,12 +4199,10 @@ function FreelanceFundsApp({ user, signOut }) {
                       ))}
                     </div>
                   </div>
-
-                  {/* Donut */}
                   <div
                     className="card"
                     style={{
-                      padding: isMobile ? 16 : 22,
+                      padding: isMobile ? 14 : 22,
                       display: "flex",
                       flexDirection: "column",
                     }}
@@ -4429,7 +4304,7 @@ function FreelanceFundsApp({ user, signOut }) {
               </>
             )}
 
-            {/* ── PROJECT CARDS ── */}
+            {/* Project cards */}
             {projects.length > 0 && (
               <div
                 className="fade-up-3"
@@ -4444,7 +4319,7 @@ function FreelanceFundsApp({ user, signOut }) {
                   marginBottom: 14,
                 }}
               >
-                {projects.map((p, idx) => {
+                {projects.map((p) => {
                   const spent = projTotals[p.id] || 0;
                   const pct = p.budget
                     ? Math.min(100, Math.round((spent / p.budget) * 100))
@@ -4460,7 +4335,6 @@ function FreelanceFundsApp({ user, signOut }) {
                         position: "relative",
                         overflow: "hidden",
                         transition: "all .2s",
-                        cursor: "default",
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.transform = "translateY(-2px)";
@@ -4473,7 +4347,6 @@ function FreelanceFundsApp({ user, signOut }) {
                         e.currentTarget.style.boxShadow = "none";
                       }}
                     >
-                      {/* Color accent bar */}
                       <div
                         style={{
                           position: "absolute",
@@ -4586,7 +4459,6 @@ function FreelanceFundsApp({ user, signOut }) {
               </div>
             )}
 
-            {/* PLG upgrade nudge */}
             {!isPro && expenses.length >= 5 && (
               <div style={{ marginBottom: 14 }}>
                 <UpgradeNudge
@@ -4598,7 +4470,7 @@ function FreelanceFundsApp({ user, signOut }) {
               </div>
             )}
 
-            {/* ── RECENT ACTIVITY ── */}
+            {/* Recent activity */}
             {expenses.length > 0 && (
               <div
                 className="card fade-up-3"
@@ -4757,7 +4629,8 @@ function FreelanceFundsApp({ user, signOut }) {
             )}
           </div>
         )}
-        {/* ── EXPENSES ── */}
+
+        {/* ── EXPENSES TAB ── */}
         {tab === "expenses" && (
           <div className="fade-up">
             <div
@@ -4801,6 +4674,7 @@ function FreelanceFundsApp({ user, signOut }) {
                 </button>
               </div>
             </div>
+
             <div
               style={{
                 marginBottom: 12,
@@ -4960,12 +4834,14 @@ function FreelanceFundsApp({ user, signOut }) {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      <CIc size={11} /> {c}
+                      <CIc size={11} />
+                      {c}
                     </button>
                   );
                 })}
               </div>
             </div>
+
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {sorted.length === 0 && (
                 <div
@@ -5072,7 +4948,8 @@ function FreelanceFundsApp({ user, signOut }) {
                                 gap: 3,
                               }}
                             >
-                              <CIc size={9} /> {e.category}
+                              <CIc size={9} />
+                              {e.category}
                             </span>
                           </div>
                           <p style={{ fontSize: 10, color: muted }}>
@@ -5149,7 +5026,7 @@ function FreelanceFundsApp({ user, signOut }) {
           </div>
         )}
 
-        {/* ── PROJECTS ── */}
+        {/* ── PROJECTS TAB ── */}
         {tab === "projects" && (
           <div className="fade-up">
             <div
@@ -5425,7 +5302,8 @@ function FreelanceFundsApp({ user, signOut }) {
                                   gap: 4,
                                 }}
                               >
-                                <CIc size={11} /> {c}
+                                <CIc size={11} />
+                                {c}
                               </span>
                             );
                           })
@@ -5442,7 +5320,7 @@ function FreelanceFundsApp({ user, signOut }) {
           </div>
         )}
 
-        {/* ── REPORTS ── */}
+        {/* ── REPORTS TAB ── */}
         {tab === "reports" && (
           <div className="fade-up">
             <div
@@ -5615,13 +5493,18 @@ function FreelanceFundsApp({ user, signOut }) {
                   >
                     <FolderOpen size={14} color="#f97316" /> By Project
                   </p>
-                  <div style={{ overflowX: "auto" }}>
+                  <div
+                    style={{
+                      overflowX: "auto",
+                      WebkitOverflowScrolling: "touch",
+                    }}
+                  >
                     <table
                       style={{
                         width: "100%",
                         borderCollapse: "collapse",
                         fontSize: 12,
-                        minWidth: 400,
+                        minWidth: 360,
                       }}
                     >
                       <thead>
@@ -5862,6 +5745,7 @@ function FreelanceFundsApp({ user, signOut }) {
         )}
       </main>
 
+      {/* ── MOBILE BOTTOM NAV ── */}
       {isMobile && (
         <nav
           style={{
@@ -5869,12 +5753,15 @@ function FreelanceFundsApp({ user, signOut }) {
             bottom: 0,
             left: 0,
             right: 0,
-            background: D ? "rgba(14,14,14,.95)" : card,
+            background: D ? "rgba(14,14,14,.97)" : card,
             borderTop: `1px solid ${brd}`,
             display: "flex",
             zIndex: 100,
             backdropFilter: "blur(16px)",
-            paddingBottom: "env(safe-area-inset-bottom,0px)",
+            // FIX 5 — safe area for notched phones
+            paddingBottom: "env(safe-area-inset-bottom, 0px)",
+            paddingLeft: "env(safe-area-inset-left, 0px)",
+            paddingRight: "env(safe-area-inset-right, 0px)",
           }}
         >
           {navItems.map(({ id, Icon, label }) => (
@@ -5913,13 +5800,25 @@ function FreelanceFundsApp({ user, signOut }) {
         </nav>
       )}
 
-      {/* EXPENSE MODAL */}
+      {/* ── EXPENSE MODAL ── */}
       {modal === "expense" && (
         <div
           className="overlay"
           onClick={(e) => e.target === e.currentTarget && setModal(null)}
         >
           <div className="modal scale-in">
+            {/* FIX 6 — drag handle indicator for mobile sheet */}
+            {isMobile && (
+              <div
+                style={{
+                  width: 36,
+                  height: 4,
+                  borderRadius: 2,
+                  background: brd,
+                  margin: "0 auto 16px",
+                }}
+              />
+            )}
             <div
               style={{
                 display: "flex",
@@ -5931,7 +5830,7 @@ function FreelanceFundsApp({ user, signOut }) {
               <h2
                 style={{
                   fontFamily: "'Playfair Display',serif",
-                  fontSize: isMobile ? 21 : 25,
+                  fontSize: isMobile ? 20 : 25,
                   color: txt,
                   display: "flex",
                   alignItems: "center",
@@ -6035,10 +5934,7 @@ function FreelanceFundsApp({ user, signOut }) {
                 </div>
               </div>
               <div>
-                <label
-                  className="lbl"
-                  style={{ display: "flex", alignItems: "center", gap: 5 }}
-                >
+                <label className="lbl">
                   <StickyNote size={10} /> Notes{" "}
                   <span
                     style={{
@@ -6047,7 +5943,7 @@ function FreelanceFundsApp({ user, signOut }) {
                       letterSpacing: 0,
                     }}
                   >
-                    (optional — explain your split)
+                    (optional)
                   </span>
                 </label>
                 <textarea
@@ -6294,7 +6190,8 @@ function FreelanceFundsApp({ user, signOut }) {
                       gap: 5,
                     }}
                   >
-                    <AlertTriangle size={12} /> {splErr}
+                    <AlertTriangle size={12} />
+                    {splErr}
                   </p>
                 )}
                 {!splErr && totalPct === 100 && form.splits.length > 0 && (
@@ -6394,7 +6291,7 @@ function FreelanceFundsApp({ user, signOut }) {
                   </>
                 ) : (
                   <>
-                    <Check size={14} />{" "}
+                    <Check size={14} />
                     {editId ? "Save Changes" : "Add Expense"}
                   </>
                 )}
@@ -6407,13 +6304,27 @@ function FreelanceFundsApp({ user, signOut }) {
         </div>
       )}
 
-      {/* PROJECT MODAL */}
+      {/* ── PROJECT MODAL ── */}
       {modal === "project" && (
         <div
           className="overlay"
           onClick={(e) => e.target === e.currentTarget && setModal(null)}
         >
-          <div className="modal scale-in" style={{ maxWidth: 400 }}>
+          <div
+            className="modal scale-in"
+            style={{ maxWidth: isMobile ? "100%" : 400 }}
+          >
+            {isMobile && (
+              <div
+                style={{
+                  width: 36,
+                  height: 4,
+                  borderRadius: 2,
+                  background: brd,
+                  margin: "0 auto 16px",
+                }}
+              />
+            )}
             <div
               style={{
                 display: "flex",
@@ -6568,12 +6479,11 @@ function FreelanceFundsApp({ user, signOut }) {
   );
 }
 
-// ── ROOT ──────────────────────────────────────────────────────────────────────
+// ── ROOT ───────────────────────────────────────────────────────────────────
 export default function Root() {
   const { user, authLoading, signUp, signIn, signOut } = useAuth();
-  const [page, setPage] = useState("landing"); // "landing" | "login" | "register"
+  const [page, setPage] = useState("landing");
 
-  // Auto-go to app if already logged in
   useEffect(() => {
     if (!authLoading && user) setPage("app");
   }, [user, authLoading]);
