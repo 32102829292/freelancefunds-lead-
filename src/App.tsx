@@ -117,7 +117,7 @@ const pClr = (projects, pid) =>
 const pNm = (projects, pid) =>
   projects.find((p) => p.id === pid)?.name || "Unknown";
 
-// ── BREAKPOINT ─────────────────────────────────────────────────────────────
+// ── BREAKPOINT ── (FIXED)
 function useBreakpoint() {
   const [w, setW] = useState(
     typeof window !== "undefined" ? window.innerWidth : 1024
@@ -130,7 +130,7 @@ function useBreakpoint() {
   return {
     isMobile: w < 640,
     isTablet: w >= 640 && w < 1024,
-    isXSmall: w < 380, // NEW — very narrow phones
+    isXSmall: w < 380,
   };
 }
 
@@ -151,15 +151,17 @@ function useLS(key, def) {
   return [val, setVal];
 }
 
-// ── AUTH ───────────────────────────────────────────────────────────────────
+// ── AUTH ──
 function useAuth() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setAuthLoading(false);
     });
+    
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -167,6 +169,7 @@ function useAuth() {
     });
     return () => subscription.unsubscribe();
   }, []);
+  
   const signUp = async (email, password) => {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
@@ -186,7 +189,7 @@ function useAuth() {
   return { user, authLoading, signUp, signIn, signOut };
 }
 
-// ── DATA ───────────────────────────────────────────────────────────────────
+// ── DATA ──
 function useData(userId) {
   const [expenses, setExpenses] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -332,7 +335,7 @@ function useData(userId) {
   };
 }
 
-// ── CHARTS ─────────────────────────────────────────────────────────────────
+// ── CHARTS ──
 function DonutChart({ segments, size = 88 }) {
   const r = 28,
     cx = 40,
@@ -371,6 +374,7 @@ function DonutChart({ segments, size = 88 }) {
     </svg>
   );
 }
+
 function SplitBar({ splits, projects }) {
   return (
     <div
@@ -401,6 +405,7 @@ function SplitBar({ splits, projects }) {
     </div>
   );
 }
+
 function Toast({ msg, type }) {
   const bg =
     { error: "#dc2626", warning: "#d97706", success: "#111" }[type] || "#111";
@@ -435,8 +440,44 @@ function Toast({ msg, type }) {
     </div>
   );
 }
-// ── Replace your existing LandingPage function in App.tsx with this ──
 
+// ── USER MANUAL COMPONENT (placeholder)
+function UserManual({ onClose, tk }) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.7)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 800,
+        padding: 16,
+      }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        style={{
+          background: tk.card,
+          border: `1px solid ${tk.brd}`,
+          borderRadius: 22,
+          width: "100%",
+          maxWidth: 500,
+          padding: 24,
+        }}
+      >
+        <h2 style={{ fontSize: 20, marginBottom: 16 }}>User Manual</h2>
+        <p>Guide content here...</p>
+        <button className="btn btn-primary" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── LANDING PAGE ──
 function LandingPage({ onLogin, onRegister }) {
   const { isMobile, isTablet } = useBreakpoint();
   const [scrolled, setScrolled] = useState(false);
@@ -457,7 +498,7 @@ function LandingPage({ onLogin, onRegister }) {
     window.addEventListener("scroll", f, { passive: true });
     return () => window.removeEventListener("scroll", f);
   }, []);
-
+  
   useEffect(() => {
     const end = Date.now() + 7 * 24 * 60 * 60 * 1000;
     const tick = () => {
@@ -617,7 +658,7 @@ function LandingPage({ onLogin, onRegister }) {
     >
       <style>{css}</style>
 
-      {/* ── MODAL ── */}
+      {/* MODAL */}
       {modalOpen && (
         <div
           onClick={(e) => e.target === e.currentTarget && setModalOpen(false)}
@@ -944,7 +985,7 @@ function LandingPage({ onLogin, onRegister }) {
         </div>
       )}
 
-      {/* ── NAV ── */}
+      {/* NAV */}
       <nav
         style={{
           position: "fixed",
@@ -1032,7 +1073,7 @@ function LandingPage({ onLogin, onRegister }) {
         </div>
       </nav>
 
-      {/* ── URGENCY BAR ── */}
+      {/* URGENCY BAR */}
       <div
         style={{
           background: "linear-gradient(135deg,#f97316,#c2410c)",
@@ -1073,7 +1114,7 @@ function LandingPage({ onLogin, onRegister }) {
         </div>
       </div>
 
-      {/* ── HERO ── */}
+      {/* HERO */}
       <section
         style={{
           minHeight: "100vh",
@@ -1404,7 +1445,7 @@ function LandingPage({ onLogin, onRegister }) {
         </div>
       </section>
 
-      {/* ── TICKER ── */}
+      {/* TICKER */}
       <div
         style={{
           background: "#111",
@@ -1438,7 +1479,7 @@ function LandingPage({ onLogin, onRegister }) {
         </div>
       </div>
 
-      {/* ── SOCIAL PROOF ── */}
+      {/* SOCIAL PROOF */}
       <section
         style={{
           background: "#fff",
@@ -1702,7 +1743,7 @@ function LandingPage({ onLogin, onRegister }) {
         </div>
       </section>
 
-      {/* ── PAIN POINTS ── */}
+      {/* PAIN POINTS */}
       <section
         style={{
           background: "#0f0e0d",
@@ -1911,7 +1952,7 @@ function LandingPage({ onLogin, onRegister }) {
         </div>
       </section>
 
-      {/* ── PRICING ── */}
+      {/* PRICING */}
       <section
         style={{
           background: "#faf8f4",
@@ -2298,7 +2339,7 @@ function LandingPage({ onLogin, onRegister }) {
         </div>
       </section>
 
-      {/* ── FAQ ── */}
+      {/* FAQ */}
       <section
         style={{
           background: "#fff",
@@ -2389,7 +2430,7 @@ function LandingPage({ onLogin, onRegister }) {
         </div>
       </section>
 
-      {/* ── FINAL CTA ── */}
+      {/* FINAL CTA */}
       <section
         style={{
           background: "#0f0e0d",
@@ -2493,7 +2534,7 @@ function LandingPage({ onLogin, onRegister }) {
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
+      {/* FOOTER */}
       <footer
         style={{
           background: "#0f0e0d",
@@ -2562,7 +2603,8 @@ function LandingPage({ onLogin, onRegister }) {
     </div>
   );
 }
-// ── AUTH PAGE ───────────────────────────────────────────────────────────────
+
+// ── AUTH PAGE ──
 function AuthPage({ mode, onSuccess, onSwitch, onBack }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -2970,7 +3012,7 @@ function AuthPage({ mode, onSuccess, onSwitch, onBack }) {
   );
 }
 
-// ── UPGRADE NUDGE ───────────────────────────────────────────────────────────
+// ── UPGRADE NUDGE ──
 function UpgradeNudge({ feature, onUpgrade, D, brd }) {
   return (
     <div
@@ -3041,314 +3083,219 @@ function UpgradeNudge({ feature, onUpgrade, D, brd }) {
   );
 }
 
-// ── USER MANUAL ─────────────────────────────────────────────────────────────
-const MANUAL_STEPS = [
+const ONBOARDING_STEPS = [
   {
-    Icon: FolderOpen,
-    color: "#f97316",
-    title: "Create a Project",
-    body: "Start by creating one project per client. Go to the Projects tab and click '+ New Project'. Add a name, client, color, and optional budget.",
-    tip: "Create one project per client — e.g. 'Website Redesign · Acme Corp'",
+    Icon: FolderOpen, iconBg: "rgba(249,115,22,0.18)", accent: "#f97316",
+    label: "Projects",
+    title: "Create a project first",
+    subtitle: "One project per client keeps everything tidy.",
+    desc: "Head to the Projects tab and tap + New Project. Give it a name, pick a client, choose a color, and set an optional budget. Every expense you log will be tied to one or more projects.",
+    tip: "Best practice: name projects like 'Website Redesign · Acme Corp' so you can tell them apart at a glance.",
   },
   {
-    Icon: Receipt,
-    color: "#3b82f6",
-    title: "Log an Expense",
-    body: "Go to Expenses and click '+ Add'. Fill in description, amount, date, and category. Then use Smart Split to assign which project(s) share the cost.",
-    tip: "You can split one expense across multiple projects by percentage",
+    Icon: Receipt, iconBg: "rgba(59,130,246,0.18)", accent: "#3b82f6",
+    label: "Expenses",
+    title: "Log an expense in 20 seconds",
+    subtitle: "Date, amount, category — that's all you need.",
+    desc: "Tap + Add from any tab. Fill in what you spent, how much, and which category it belongs to. You'll pick a date and optionally write a note to remind yourself why you made the purchase.",
+    tip: "Log expenses right after you spend — waiting until quarter-end makes it 10x harder to reconstruct.",
   },
   {
-    Icon: Zap,
-    color: "#8b5cf6",
-    title: "Use Smart Split",
-    body: "Smart Split divides any expense across projects by percentage. Click Auto to split equally, or type custom percentages. Must always total 100%.",
-    tip: "Use the Notes field to document why a split was set a certain way",
+    Icon: Zap, iconBg: "rgba(139,92,246,0.18)", accent: "#8b5cf6",
+    label: "Smart Split",
+    title: "Split costs across clients",
+    subtitle: "Assign percentages that must total 100%.",
+    desc: "In the expense form, use Smart Split to divide a shared cost across multiple projects. Type your own percentages, or hit Auto to divide equally. The split bar in every row shows the breakdown instantly.",
+    tip: "Use the Notes field to document why you chose a particular split — your accountant will thank you.",
   },
   {
-    Icon: LayoutDashboard,
-    color: "#10b981",
-    title: "Read the Dashboard",
-    body: "The Dashboard shows total tracked expenses, estimated tax savings, monthly spend chart, and per-project breakdown — all in real time.",
-    tip: "Estimated savings assumes 20% deduction rate — adjust with your accountant",
+    Icon: LayoutDashboard, iconBg: "rgba(16,185,129,0.18)", accent: "#10b981",
+    label: "Dashboard",
+    title: "Watch your savings appear",
+    subtitle: "Everything updates in real time.",
+    desc: "The Dashboard shows your total tracked expenses, estimated tax savings at 20%, a monthly spend chart, and a breakdown per project. The more expenses you log, the clearer the picture becomes.",
+    tip: "The 20% savings estimate is a guide — confirm your actual rate with a licensed CPA before filing.",
   },
   {
-    Icon: FileBarChart2,
-    color: "#ec4899",
-    title: "Export Tax Reports",
-    body: "Go to Reports for a BIR-ready breakdown by project and category. Export to CSV for free. Upgrade to Pro to unlock PDF export.",
-    tip: "Export CSV at the end of every quarter and save it with your receipts",
+    Icon: FileBarChart2, iconBg: "rgba(236,72,153,0.18)", accent: "#ec4899",
+    label: "Reports",
+    title: "Export a BIR-ready report",
+    subtitle: "One click at the end of every quarter.",
+    desc: "Go to the Reports tab to see a full breakdown by project and category with estimated savings. Hit CSV Export (free) to download a file your accountant can use directly. Pro users also get a formatted PDF.",
+    tip: "Save your CSV exports alongside physical receipts — this is exactly what you need for BIR filings.",
   },
 ];
 
-function UserManual({ onClose, tk }) {
+function OnboardingModal({ onClose, userId, tk }) {
   const { isMobile } = useBreakpoint();
+  const { D, card, brd, txt, muted } = tk;
   const [step, setStep] = useState(0);
-  const cur = MANUAL_STEPS[step];
+  const [done, setDone] = useState(false);
+  const cur = ONBOARDING_STEPS[step];
   const Ic = cur.Icon;
+  const pct = Math.round(((step + 1) / ONBOARDING_STEPS.length) * 100);
+
+  const finish = () => {
+    localStorage.setItem(`ff_onboarded_${userId}`, "1");
+    onClose();
+  };
+
   return (
     <div
       style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,.8)",
-        display: "flex",
-        alignItems: "center",
+        position: "fixed", inset: 0,
+        background: "rgba(0,0,0,0.7)",
+        display: "flex", alignItems: isMobile ? "flex-end" : "center",
         justifyContent: "center",
-        zIndex: 900,
-        padding: 16,
-        backdropFilter: "blur(12px)",
+        zIndex: 950, padding: isMobile ? 0 : 16,
+        backdropFilter: "blur(14px)",
       }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div
-        style={{
-          background: tk.card,
-          border: `1px solid ${tk.brd}`,
-          borderRadius: 24,
-          width: "100%",
-          maxWidth: 540,
-          boxShadow: "0 40px 80px rgba(0,0,0,.6)",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            background: tk.D ? "#111" : "#f9fafb",
-            padding: "16px 24px 0",
-            borderBottom: `1px solid ${tk.brd}`,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 12,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <BookOpen size={16} color="#f97316" />
-              <span style={{ fontWeight: 800, fontSize: 14, color: tk.txt }}>
-                User Manual
-              </span>
-              <span
-                style={{
-                  background: "#f97316",
-                  color: "#fff",
-                  borderRadius: 20,
-                  padding: "2px 9px",
-                  fontSize: 10,
-                  fontWeight: 800,
-                }}
-              >
-                {step + 1}/{MANUAL_STEPS.length}
-              </span>
+      <div style={{
+        background: card,
+        borderRadius: isMobile ? "22px 22px 0 0" : 24,
+        width: "100%", maxWidth: 480,
+        overflow: "hidden",
+        border: `1px solid ${brd}`,
+        boxShadow: "0 32px 72px rgba(0,0,0,0.5)",
+      }}>
+        {done ? (
+          <div style={{ textAlign: "center", padding: "40px 28px" }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: "50%",
+              background: "rgba(16,185,129,0.12)",
+              border: "2px solid rgba(16,185,129,0.3)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 16px",
+            }}>
+              <CheckCircle2 size={24} color="#10b981" />
             </div>
+            <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, color: txt, marginBottom: 8 }}>
+              You're all set!
+            </h3>
+            <p style={{ fontSize: 14, color: muted, lineHeight: 1.75, marginBottom: 24, maxWidth: 320, margin: "0 auto 24px" }}>
+              Create your first project, log one expense, and watch FreelanceFunds track your savings automatically.
+            </p>
             <button
-              onClick={onClose}
+              onClick={finish}
               style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: tk.muted,
-                display: "flex",
+                background: "#f97316", color: "#fff", border: "none",
+                borderRadius: 12, padding: "13px 32px",
+                fontFamily: "inherit", fontSize: 15, fontWeight: 700,
+                cursor: "pointer", marginBottom: 10,
+                boxShadow: "0 4px 16px rgba(249,115,22,0.4)",
               }}
             >
-              <X size={16} />
+              Start with a project →
             </button>
-          </div>
-          <div
-            style={{
-              height: 3,
-              background: tk.D ? "#222" : "#e5e7eb",
-              borderRadius: 2,
-            }}
-          >
-            <div
-              style={{
-                height: "100%",
-                background: cur.color,
-                width: `${((step + 1) / MANUAL_STEPS.length) * 100}%`,
-                transition: "width .4s",
-              }}
-            />
-          </div>
-        </div>
-        <div
-          style={{
-            display: "flex",
-            gap: 6,
-            justifyContent: "center",
-            padding: "14px 24px 0",
-          }}
-        >
-          {MANUAL_STEPS.map((s, i) => {
-            const DotIc = s.Icon;
-            return (
-              <button
-                key={i}
-                onClick={() => setStep(i)}
-                style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: "50%",
-                  cursor: "pointer",
-                  border: `2px solid ${
-                    i === step ? s.color : i < step ? "#10b981" : tk.brd
-                  }`,
-                  background: i === step ? `${s.color}18` : "transparent",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {i < step ? (
-                  <Check size={11} color="#10b981" />
-                ) : (
-                  <DotIc size={11} color={i === step ? s.color : tk.muted} />
-                )}
-              </button>
-            );
-          })}
-        </div>
-        <div style={{ padding: "18px 24px" }}>
-          <div style={{ display: "flex", gap: 14, marginBottom: 14 }}>
-            <div
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 13,
-                background: `${cur.color}15`,
-                border: `2px solid ${cur.color}30`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <Ic size={20} color={cur.color} />
-            </div>
-            <div>
-              <h3
-                style={{
-                  fontSize: 18,
-                  fontWeight: 800,
-                  color: tk.txt,
-                  marginBottom: 7,
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                {cur.title}
-              </h3>
-              <p style={{ fontSize: 13, color: tk.muted, lineHeight: 1.85 }}>
-                {cur.body}
-              </p>
-            </div>
-          </div>
-          <div
-            style={{
-              background: tk.D ? "#1a1200" : "#fffbeb",
-              border: `1px solid ${tk.D ? "#3a2800" : "#fed7aa"}`,
-              borderRadius: 10,
-              padding: "10px 13px",
-              display: "flex",
-              gap: 8,
-              alignItems: "flex-start",
-              marginBottom: 18,
-            }}
-          >
-            <Sparkles
-              size={12}
-              color="#f97316"
-              style={{ flexShrink: 0, marginTop: 2 }}
-            />
-            <p
-              style={{
-                fontSize: 12,
-                color: tk.D ? "#d97706" : "#92400e",
-                lineHeight: 1.75,
-              }}
-            >
-              {cur.tip}
+            <p style={{ fontSize: 11, color: muted }}>
+              Replay this guide anytime from the Help button.
             </p>
           </div>
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              justifyContent: "space-between",
-            }}
-          >
-            <button
-              onClick={() => setStep((s) => Math.max(0, s - 1))}
-              disabled={step === 0}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-                background: "none",
-                border: `1.5px solid ${tk.brd}`,
-                color: step === 0 ? tk.muted : tk.txt,
-                borderRadius: 10,
-                padding: "8px 14px",
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: step === 0 ? "not-allowed" : "pointer",
-                fontFamily: "inherit",
-                opacity: step === 0 ? 0.4 : 1,
-              }}
-            >
-              <ChevronLeft size={13} /> Prev
-            </button>
-            {step < MANUAL_STEPS.length - 1 ? (
+        ) : (
+          <>
+            {/* Dark top section */}
+            <div style={{ background: "#0f0e0d", padding: "24px 28px 22px" }}>
+              <div style={{ height: 3, background: "rgba(255,255,255,0.1)", borderRadius: 2, marginBottom: 22, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${pct}%`, background: "#f97316", borderRadius: 2, transition: "width 0.4s ease" }} />
+              </div>
+              <div style={{
+                width: 44, height: 44, borderRadius: 12,
+                background: cur.iconBg,
+                display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12,
+              }}>
+                <Ic size={20} color={cur.accent} />
+              </div>
+              <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: ".09em", marginBottom: 5 }}>
+                Step {step + 1} of {ONBOARDING_STEPS.length} — {cur.label}
+              </p>
+              <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, color: "#fff", marginBottom: 5 }}>
+                {cur.title}
+              </h3>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.6 }}>
+                {cur.subtitle}
+              </p>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: "22px 28px" }}>
+              <p style={{ fontSize: 14, color: txt, lineHeight: 1.8, marginBottom: 14 }}>
+                {cur.desc}
+              </p>
+              <div style={{
+                background: D ? "#1a1200" : "#fffbeb",
+                borderLeft: "3px solid #f97316",
+                borderRadius: "0 8px 8px 0",
+                padding: "10px 14px", marginBottom: 20,
+                display: "flex", gap: 8, alignItems: "flex-start",
+              }}>
+                <Sparkles size={12} color="#f97316" style={{ flexShrink: 0, marginTop: 2 }} />
+                <p style={{ fontSize: 12.5, color: D ? "#d97706" : "#78350f", lineHeight: 1.7 }}>
+                  {cur.tip}
+                </p>
+              </div>
+
+              {/* Step dots */}
+              <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 18 }}>
+                {ONBOARDING_STEPS.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setStep(i)}
+                    style={{
+                      height: 7, borderRadius: 4, border: "none", cursor: "pointer", padding: 0,
+                      width: i === step ? 20 : 7,
+                      background: i < step ? "#10b981" : i === step ? "#f97316" : brd,
+                      transition: "all 0.25s ease",
+                    }}
+                  />
+                ))}
+              </div>
+
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                {step > 0 && (
+                  <button
+                    onClick={() => setStep(s => s - 1)}
+                    style={{
+                      background: "none", border: `1.5px solid ${brd}`,
+                      borderRadius: 10, padding: "10px 16px",
+                      fontFamily: "inherit", fontSize: 13, fontWeight: 700,
+                      color: muted, cursor: "pointer",
+                    }}
+                  >
+                    ← Back
+                  </button>
+                )}
+                <button
+                  onClick={() => step === ONBOARDING_STEPS.length - 1 ? setDone(true) : setStep(s => s + 1)}
+                  style={{
+                    flex: 1, background: "#f97316", color: "#fff", border: "none",
+                    borderRadius: 10, padding: "11px",
+                    fontFamily: "inherit", fontSize: 14, fontWeight: 700,
+                    cursor: "pointer", boxShadow: "0 4px 14px rgba(249,115,22,0.35)",
+                  }}
+                >
+                  {step === ONBOARDING_STEPS.length - 1 ? "Finish →" : "Next →"}
+                </button>
+              </div>
               <button
-                onClick={() => setStep((s) => s + 1)}
+                onClick={finish}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                  background: "#f97316",
-                  border: "none",
-                  color: "#fff",
-                  borderRadius: 10,
-                  padding: "8px 14px",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
+                  background: "none", border: "none", width: "100%",
+                  fontSize: 12, color: muted, cursor: "pointer",
+                  fontFamily: "inherit", marginTop: 10, padding: 4,
                 }}
               >
-                Next <ChevronRight size={13} />
+                Skip guide
               </button>
-            ) : (
-              <button
-                onClick={onClose}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                  background: "#f97316",
-                  border: "none",
-                  color: "#fff",
-                  borderRadius: 10,
-                  padding: "8px 14px",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                <CheckCircle2 size={13} /> Got it!
-              </button>
-            )}
-          </div>
-        </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-// ── SHARE CARD ──────────────────────────────────────────────────────────────
+// ── SHARE CARD ──
 function ShareCard({ grandTotal, estSavings, projects, onClose, tk }) {
   const [copied, setCopied] = useState(false);
   const text = `I tracked ${fmt(
@@ -3483,7 +3430,7 @@ function ShareCard({ grandTotal, estSavings, projects, onClose, tk }) {
   );
 }
 
-// ── MAIN APP ────────────────────────────────────────────────────────────────
+// ── MAIN APP ──
 function FreelanceFundsApp({ user, signOut }) {
   const {
     expenses,
@@ -3511,6 +3458,7 @@ function FreelanceFundsApp({ user, signOut }) {
   const [showManual, setShowManual] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const { isMobile, isTablet, isXSmall } = useBreakpoint();
   const isSmall = isMobile || isTablet;
@@ -3518,6 +3466,12 @@ function FreelanceFundsApp({ user, signOut }) {
   const maxExp = isPro ? Infinity : FREE_EXP;
   const maxProj = isPro ? Infinity : FREE_PROJ;
   const maxSpl = isPro ? 4 : 2;
+
+  useEffect(() => {
+    if (!loading && !localStorage.getItem(`ff_onboarded_${user.id}`)) {
+      setShowOnboarding(true);
+    }
+  }, [loading, user.id]);
 
   const D = dark;
   const bg = D ? "#0b0b0b" : "#f4f3ef";
@@ -3905,7 +3859,6 @@ function FreelanceFundsApp({ user, signOut }) {
     );
 
   return (
-    // FIX 3 — root div with proper overflow and width constraints
     <div
       style={{
         fontFamily: "'Plus Jakarta Sans',sans-serif",
@@ -3930,6 +3883,13 @@ function FreelanceFundsApp({ user, signOut }) {
           estSavings={estSavings}
           projects={projects}
           onClose={() => setShowShare(false)}
+          tk={tk}
+        />
+      )}
+      {showOnboarding && (
+        <OnboardingModal
+          onClose={() => setShowOnboarding(false)}
+          userId={user.id}
           tk={tk}
         />
       )}
@@ -4193,7 +4153,7 @@ function FreelanceFundsApp({ user, signOut }) {
         </div>
       )}
 
-      {/* ── HEADER ── */}
+      {/* HEADER */}
       <header
         style={{
           background: D ? "rgba(14,14,14,.92)" : card,
@@ -4399,7 +4359,7 @@ function FreelanceFundsApp({ user, signOut }) {
         </div>
       </header>
 
-      {/* FIX 2 — usage bar: simplified on mobile to avoid overflow */}
+      {/* Usage bar */}
       {!isPro && (
         <div
           style={{
@@ -4521,7 +4481,7 @@ function FreelanceFundsApp({ user, signOut }) {
         </div>
       )}
 
-      {/* ── MAIN CONTENT ── */}
+      {/* MAIN CONTENT */}
       <main
         style={{
           maxWidth: 1040,
@@ -4534,7 +4494,7 @@ function FreelanceFundsApp({ user, signOut }) {
           width: "100%",
         }}
       >
-        {/* ── DASHBOARD ── */}
+        {/* DASHBOARD */}
         {tab === "dashboard" && (
           <div>
             <div
@@ -4872,7 +4832,7 @@ function FreelanceFundsApp({ user, signOut }) {
                   ))}
                 </div>
 
-                {/* FIX 4 — mini stats: 2-col on xsmall, 3-col otherwise */}
+                {/* mini stats */}
                 <div
                   className="fade-up-2"
                   style={{
@@ -4905,7 +4865,6 @@ function FreelanceFundsApp({ user, signOut }) {
                       accent: "#3b82f6",
                     },
                   ].map((s, i) =>
-                    // On xsmall, hide the 3rd stat to keep 2-col even
                     isXSmall && i === 2 ? null : (
                       <div key={i} className="stat-card">
                         <div
@@ -5483,7 +5442,7 @@ function FreelanceFundsApp({ user, signOut }) {
           </div>
         )}
 
-        {/* ── EXPENSES TAB ── */}
+        {/* EXPENSES TAB */}
         {tab === "expenses" && (
           <div className="fade-up">
             <div
@@ -5879,7 +5838,7 @@ function FreelanceFundsApp({ user, signOut }) {
           </div>
         )}
 
-        {/* ── PROJECTS TAB ── */}
+        {/* PROJECTS TAB */}
         {tab === "projects" && (
           <div className="fade-up">
             <div
@@ -6173,7 +6132,7 @@ function FreelanceFundsApp({ user, signOut }) {
           </div>
         )}
 
-        {/* ── REPORTS TAB ── */}
+        {/* REPORTS TAB */}
         {tab === "reports" && (
           <div className="fade-up">
             <div
@@ -6598,7 +6557,7 @@ function FreelanceFundsApp({ user, signOut }) {
         )}
       </main>
 
-      {/* ── MOBILE BOTTOM NAV ── */}
+      {/* MOBILE BOTTOM NAV */}
       {isMobile && (
         <nav
           style={{
@@ -6611,7 +6570,6 @@ function FreelanceFundsApp({ user, signOut }) {
             display: "flex",
             zIndex: 100,
             backdropFilter: "blur(16px)",
-            // FIX 5 — safe area for notched phones
             paddingBottom: "env(safe-area-inset-bottom, 0px)",
             paddingLeft: "env(safe-area-inset-left, 0px)",
             paddingRight: "env(safe-area-inset-right, 0px)",
@@ -6653,14 +6611,13 @@ function FreelanceFundsApp({ user, signOut }) {
         </nav>
       )}
 
-      {/* ── EXPENSE MODAL ── */}
+      {/* EXPENSE MODAL */}
       {modal === "expense" && (
         <div
           className="overlay"
           onClick={(e) => e.target === e.currentTarget && setModal(null)}
         >
           <div className="modal scale-in">
-            {/* FIX 6 — drag handle indicator for mobile sheet */}
             {isMobile && (
               <div
                 style={{
@@ -7157,7 +7114,7 @@ function FreelanceFundsApp({ user, signOut }) {
         </div>
       )}
 
-      {/* ── PROJECT MODAL ── */}
+      {/* PROJECT MODAL */}
       {modal === "project" && (
         <div
           className="overlay"
@@ -7332,7 +7289,7 @@ function FreelanceFundsApp({ user, signOut }) {
   );
 }
 
-// ── ROOT ───────────────────────────────────────────────────────────────────
+// ── ROOT ──
 export default function Root() {
   const { user, authLoading, signUp, signIn, signOut } = useAuth();
   const [page, setPage] = useState("landing");
