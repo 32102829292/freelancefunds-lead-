@@ -581,6 +581,72 @@ function UserManual({ onClose, tk }) {
 }
 
 // ── ONBOARDING GUIDE ──
+const ONBOARDING_STEPS = [
+  {
+    title: "Welcome to FreelanceFunds! 🎉",
+    description:
+      "Your all-in-one expense tracker built specifically for Filipino freelancers. Let's get you set up in just a few minutes.",
+    tip: "You can replay this guide anytime from the Help button in the sidebar.",
+    icon: <Gift size={32} color="#f97316" />,
+    iconBg: "rgba(249,115,22,0.15)",
+    accent: "#f97316",
+  },
+  {
+    title: "Create Your First Project",
+    description:
+      "Projects represent your clients or ongoing work. Each project helps you track expenses separately and see which clients are most profitable.",
+    tip: "Name your projects clearly, like 'Website Redesign - Acme Corp' or 'Social Media - Client ABC'.",
+    icon: <FolderOpen size={32} color="#3b82f6" />,
+    iconBg: "rgba(59,130,246,0.15)",
+    accent: "#3b82f6",
+  },
+  {
+    title: "Log Your First Expense",
+    description:
+      "Record every business expense you make. Add a description, amount, category, and date. You can also add notes for important details.",
+    tip: "Log expenses right after spending to avoid forgetting. Keep receipts for BIR filing!",
+    icon: <Receipt size={32} color="#10b981" />,
+    iconBg: "rgba(16,185,129,0.15)",
+    accent: "#10b981",
+  },
+  {
+    title: "Smart Split Feature ✨",
+    description:
+      "Share expenses across multiple projects! Perfect for software subscriptions, phone bills, or any cost that benefits multiple clients.",
+    tip: "Pro users can split across 4 projects. Use the Auto button to split equally, or set custom percentages.",
+    icon: <Zap size={32} color="#8b5cf6" />,
+    iconBg: "rgba(139,92,246,0.15)",
+    accent: "#8b5cf6",
+  },
+  {
+    title: "Track Your Tax Savings",
+    description:
+      "Watch your estimated tax savings grow automatically. The Dashboard shows your total tracked expenses and potential deductions at 20%.",
+    tip: "Confirm your actual tax rate with a licensed CPA. This is an estimate based on standard Philippine rates.",
+    icon: <Shield size={32} color="#10b981" />,
+    iconBg: "rgba(16,185,129,0.15)",
+    accent: "#10b981",
+  },
+  {
+    title: "Generate Reports for BIR",
+    description:
+      "Export CSV reports for your accountant or get formatted PDF reports with Pro. Everything is organized by project and category.",
+    tip: "Save your reports alongside physical receipts. This is exactly what BIR needs for filing.",
+    icon: <FileBarChart2 size={32} color="#ec4899" />,
+    iconBg: "rgba(236,72,153,0.15)",
+    accent: "#ec4899",
+  },
+  {
+    title: "You're All Set! 🚀",
+    description:
+      "Start tracking your expenses, save money on taxes, and grow your freelance business. Upgrade to Pro for unlimited expenses and premium features.",
+    tip: "The first 50 Pro subscribers get lifetime ₱500/month pricing. Don't miss out!",
+    icon: <Trophy size={32} color="#f97316" />,
+    iconBg: "rgba(249,115,22,0.15)",
+    accent: "#f97316",
+  },
+];
+
 function OnboardingGuide({
   onClose,
   steps,
@@ -845,74 +911,7 @@ function UpgradeNudge({ feature, onUpgrade, D, brd }) {
   );
 }
 
-// ── ONBOARDING STEPS ──
-const ONBOARDING_STEPS = [
-  {
-    title: "Welcome to FreelanceFunds! 🎉",
-    description:
-      "Your all-in-one expense tracker built specifically for Filipino freelancers. Let's get you set up in just a few minutes.",
-    tip: "You can replay this guide anytime from the Help button in the sidebar.",
-    icon: <Gift size={32} color="#f97316" />,
-    iconBg: "rgba(249,115,22,0.15)",
-    accent: "#f97316",
-  },
-  {
-    title: "Create Your First Project",
-    description:
-      "Projects represent your clients or ongoing work. Each project helps you track expenses separately and see which clients are most profitable.",
-    tip: "Name your projects clearly, like 'Website Redesign - Acme Corp' or 'Social Media - Client ABC'.",
-    icon: <FolderOpen size={32} color="#3b82f6" />,
-    iconBg: "rgba(59,130,246,0.15)",
-    accent: "#3b82f6",
-  },
-  {
-    title: "Log Your First Expense",
-    description:
-      "Record every business expense you make. Add a description, amount, category, and date. You can also add notes for important details.",
-    tip: "Log expenses right after spending to avoid forgetting. Keep receipts for BIR filing!",
-    icon: <Receipt size={32} color="#10b981" />,
-    iconBg: "rgba(16,185,129,0.15)",
-    accent: "#10b981",
-  },
-  {
-    title: "Smart Split Feature ✨",
-    description:
-      "Share expenses across multiple projects! Perfect for software subscriptions, phone bills, or any cost that benefits multiple clients.",
-    tip: "Pro users can split across 4 projects. Use the Auto button to split equally, or set custom percentages.",
-    icon: <Zap size={32} color="#8b5cf6" />,
-    iconBg: "rgba(139,92,246,0.15)",
-    accent: "#8b5cf6",
-  },
-  {
-    title: "Track Your Tax Savings",
-    description:
-      "Watch your estimated tax savings grow automatically. The Dashboard shows your total tracked expenses and potential deductions at 20%.",
-    tip: "Confirm your actual tax rate with a licensed CPA. This is an estimate based on standard Philippine rates.",
-    icon: <Shield size={32} color="#10b981" />,
-    iconBg: "rgba(16,185,129,0.15)",
-    accent: "#10b981",
-  },
-  {
-    title: "Generate Reports for BIR",
-    description:
-      "Export CSV reports for your accountant or get formatted PDF reports with Pro. Everything is organized by project and category.",
-    tip: "Save your reports alongside physical receipts. This is exactly what BIR needs for filing.",
-    icon: <FileBarChart2 size={32} color="#ec4899" />,
-    iconBg: "rgba(236,72,153,0.15)",
-    accent: "#ec4899",
-  },
-  {
-    title: "You're All Set! 🚀",
-    description:
-      "Start tracking your expenses, save money on taxes, and grow your freelance business. Upgrade to Pro for unlimited expenses and premium features.",
-    tip: "The first 50 Pro subscribers get lifetime ₱500/month pricing. Don't miss out!",
-    icon: <Trophy size={32} color="#f97316" />,
-    iconBg: "rgba(249,115,22,0.15)",
-    accent: "#f97316",
-  },
-];
-
-// ── MAIN APP ──
+// ── MAIN APP (Desktop with Left Sidebar) ──
 function FreelanceFundsApp({ user, signOut }) {
   const {
     expenses,
@@ -1523,6 +1522,8 @@ function FreelanceFundsApp({ user, signOut }) {
                 fmt,
                 isMobile,
                 isXSmall,
+                setModal,
+                setPForm,
               }}
             />
           )}
@@ -2103,6 +2104,8 @@ function FreelanceFundsApp({ user, signOut }) {
               fmt,
               isMobile,
               isXSmall,
+              setModal,
+              setPForm,
             }}
           />
         )}
@@ -2280,6 +2283,8 @@ function DashboardContent({
   fmt,
   isMobile,
   isXSmall,
+  setModal,
+  setPForm,
 }) {
   if (expenses.length === 0 && projects.length === 0) {
     return (
@@ -4591,18 +4596,423 @@ function ShareCard({ grandTotal, estSavings, projects, onClose, tk }) {
   );
 }
 
-// Landing Page Component (simplified for brevity - keep your existing LandingPage)
-function LandingPage({ onLogin, onRegister }) {
-  // ... keep your existing LandingPage implementation
-  return <div>Landing Page</div>; // Placeholder
-}
-
+// ── AUTH PAGE ──
 function AuthPage({ mode, onSuccess, onSwitch, onBack }) {
-  // ... keep your existing AuthPage implementation
-  return <div>Auth Page</div>; // Placeholder
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState(false);
+  const { signUp, signIn } = useAuth();
+  const isRegister = mode === "register";
+
+  const handleSubmit = async () => {
+    setError("");
+    if (!email.trim() || !password.trim()) {
+      setError("Please fill in both fields.");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    setLoading(true);
+    try {
+      if (isRegister) {
+        await signUp(email.trim(), password);
+        setDone(true);
+      } else {
+        await signIn(email.trim(), password);
+        onSuccess();
+      }
+    } catch (err) {
+      setError(err.message || "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const css = `
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{overflow-x:hidden;max-width:100vw}
+    @keyframes scaleIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+    @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+    .auth-card{animation:scaleIn .3s ease both}
+  `;
+
+  return (
+    <div
+      style={{
+        background: "#0a0a0a",
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+        fontFamily: "'Plus Jakarta Sans',sans-serif",
+      }}
+    >
+      <style>{css}</style>
+      <button
+        onClick={onBack}
+        style={{
+          position: "fixed",
+          top: 20,
+          left: 20,
+          background: "rgba(255,255,255,.06)",
+          border: "1px solid rgba(255,255,255,.1)",
+          color: "#888",
+          borderRadius: 8,
+          padding: "7px 12px",
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: "pointer",
+          fontFamily: "inherit",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        <ChevronLeft size={13} /> Back
+      </button>
+      <div
+        className="auth-card"
+        style={{
+          background: "#111",
+          border: "1px solid rgba(255,255,255,.08)",
+          borderRadius: 24,
+          width: "100%",
+          maxWidth: 420,
+          overflow: "hidden",
+        }}
+      >
+        <div style={{ padding: "28px 24px 0", textAlign: "center" }}>
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              background: "#f97316",
+              borderRadius: 13,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 16px",
+              fontWeight: 900,
+              color: "#fff",
+              fontSize: 22,
+            }}
+          >
+            ₣
+          </div>
+          <h2
+            style={{
+              fontFamily: "'Playfair Display',serif",
+              fontSize: 26,
+              color: "#fff",
+              marginBottom: 6,
+            }}
+          >
+            {done
+              ? "Check your email"
+              : isRegister
+              ? "Create your account"
+              : "Welcome back"}
+          </h2>
+          <p style={{ fontSize: 13, color: "#555", marginBottom: 28 }}>
+            {done
+              ? `We sent a confirmation link to ${email}. Click it to activate your account.`
+              : isRegister
+              ? "Free forever. No credit card needed."
+              : "Log in to access your expenses and reports."}
+          </p>
+        </div>
+        {done ? (
+          <div style={{ padding: "0 24px 28px", textAlign: "center" }}>
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: "50%",
+                background: "rgba(16,185,129,.15)",
+                border: "2px solid rgba(16,185,129,.3)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 16px",
+              }}
+            >
+              <Mail size={24} color="#10b981" />
+            </div>
+            <p
+              style={{
+                fontSize: 13,
+                color: "#555",
+                lineHeight: 1.75,
+                marginBottom: 20,
+              }}
+            >
+              After confirming your email, come back and log in.
+            </p>
+            <button
+              onClick={() => {
+                setDone(false);
+                onSwitch();
+              }}
+              style={{
+                background: "#f97316",
+                color: "#fff",
+                border: "none",
+                borderRadius: 12,
+                padding: "12px 28px",
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: "pointer",
+                fontFamily: "inherit",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <LogIn size={15} /> Go to Log In
+            </button>
+          </div>
+        ) : (
+          <div
+            style={{
+              padding: "0 24px 28px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 14,
+            }}
+          >
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: "#555",
+                  textTransform: "uppercase",
+                  letterSpacing: ".07em",
+                  marginBottom: 7,
+                }}
+              >
+                Email
+              </label>
+              <div style={{ position: "relative" }}>
+                <Mail
+                  size={14}
+                  color="#444"
+                  style={{
+                    position: "absolute",
+                    left: 13,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    pointerEvents: "none",
+                  }}
+                />
+                <input
+                  type="email"
+                  placeholder="you@email.com"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError("");
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                  style={{
+                    width: "100%",
+                    background: "#1a1a1a",
+                    border: "1.5px solid #222",
+                    borderRadius: 11,
+                    padding: "11px 14px 11px 36px",
+                    fontSize: 14,
+                    color: "#fff",
+                    outline: "none",
+                    fontFamily: "inherit",
+                    transition: "border .15s",
+                  }}
+                  onFocus={(e) => (e.target.style.borderColor = "#f97316")}
+                  onBlur={(e) => (e.target.style.borderColor = "#222")}
+                />
+              </div>
+            </div>
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: "#555",
+                  textTransform: "uppercase",
+                  letterSpacing: ".07em",
+                  marginBottom: 7,
+                }}
+              >
+                Password{" "}
+                {isRegister && (
+                  <span
+                    style={{
+                      color: "#333",
+                      fontWeight: 400,
+                      textTransform: "none",
+                    }}
+                  >
+                    (min 6 characters)
+                  </span>
+                )}
+              </label>
+              <div style={{ position: "relative" }}>
+                <Lock
+                  size={14}
+                  color="#444"
+                  style={{
+                    position: "absolute",
+                    left: 13,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    pointerEvents: "none",
+                  }}
+                />
+                <input
+                  type={showPw ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError("");
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                  style={{
+                    width: "100%",
+                    background: "#1a1a1a",
+                    border: "1.5px solid #222",
+                    borderRadius: 11,
+                    padding: "11px 40px 11px 36px",
+                    fontSize: 14,
+                    color: "#fff",
+                    outline: "none",
+                    fontFamily: "inherit",
+                    transition: "border .15s",
+                  }}
+                  onFocus={(e) => (e.target.style.borderColor = "#f97316")}
+                  onBlur={(e) => (e.target.style.borderColor = "#222")}
+                />
+                <button
+                  onClick={() => setShowPw((s) => !s)}
+                  style={{
+                    position: "absolute",
+                    right: 12,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "#444",
+                    padding: 2,
+                    display: "flex",
+                  }}
+                >
+                  {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+            {error && (
+              <div
+                style={{
+                  background: "rgba(220,38,38,.1)",
+                  border: "1px solid rgba(220,38,38,.3)",
+                  borderRadius: 10,
+                  padding: "10px 14px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <AlertTriangle size={13} color="#dc2626" />
+                <span
+                  style={{ fontSize: 12, color: "#dc2626", fontWeight: 600 }}
+                >
+                  {error}
+                </span>
+              </div>
+            )}
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              style={{
+                background: "#f97316",
+                color: "#fff",
+                border: "none",
+                borderRadius: 12,
+                padding: 13,
+                fontSize: 15,
+                fontWeight: 800,
+                cursor: loading ? "not-allowed" : "pointer",
+                fontFamily: "inherit",
+                opacity: loading ? 0.7 : 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                transition: "opacity .15s",
+              }}
+            >
+              {loading ? (
+                <>
+                  <RefreshCw
+                    size={15}
+                    style={{ animation: "spin .8s linear infinite" }}
+                  />
+                  {isRegister ? "Creating account..." : "Logging in..."}
+                </>
+              ) : isRegister ? (
+                <>
+                  <UserPlus size={15} />
+                  Create Account
+                </>
+              ) : (
+                <>
+                  <LogIn size={15} />
+                  Log In
+                </>
+              )}
+            </button>
+            <p style={{ textAlign: "center", fontSize: 13, color: "#444" }}>
+              {isRegister ? "Already have an account? " : "No account yet? "}
+              <button
+                onClick={onSwitch}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#f97316",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  fontSize: 13,
+                }}
+              >
+                {isRegister ? "Log In" : "Create one free"}
+              </button>
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
-// Root Component
+// ── LANDING PAGE (keep your original implementation) ──
+// Note: You need to paste your original LandingPage implementation here
+// Since it's very long, I'm adding a placeholder - please copy your original LandingPage code
+function LandingPage({ onLogin, onRegister }) {
+  // Paste your original LandingPage implementation here
+  return <div>Landing Page - Your original implementation goes here</div>;
+}
+
+// ── ROOT ──
 export default function Root() {
   const { user, authLoading, signUp, signIn, signOut } = useAuth();
   const [page, setPage] = useState("landing");
